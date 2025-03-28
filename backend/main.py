@@ -68,12 +68,23 @@ class User(BaseModel):
     password: str
 
 class Lesson(BaseModel):
-    id: Optional[int]
+    id: Optional[int] = None
     title: str
-    start_time: datetime
-    end_time: datetime
+    start_time: str
+    end_time: str
     student_name: str
     notes: Optional[str] = None
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "Урок вокала",
+                "start_time": "2024-03-28T10:00:00",
+                "end_time": "2024-03-28T11:00:00",
+                "student_name": "Иван Иванов",
+                "notes": "Повторение гамм"
+            }
+        }
 
 # Функции для работы с базой данных
 def init_db():
@@ -82,7 +93,7 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
-            password TEXT NOT NULL
+            hashed_password TEXT NOT NULL
         )
     ''')
     c.execute('''
@@ -113,7 +124,7 @@ init_db()
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     conn = get_db_connection()
     c = conn.cursor()
-    c.execute('SELECT password FROM users WHERE username = ?', (form_data.username,))
+    c.execute('SELECT hashed_password FROM users WHERE username = ?', (form_data.username,))
     result = c.fetchone()
     
     if not result or not pwd_context.verify(form_data.password, result[0]):
@@ -128,19 +139,34 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @app.post("/api/lessons")
 async def create_lesson(lesson: Lesson):
-    loop = asyncio.get_event_loop()
-    conn = get_db_connection()
-    c = conn.cursor()
-    
-    await loop.run_in_executor(
-        db_pool,
-        lambda: c.execute(
-            'INSERT INTO lessons (title, start_time, end_time, student_name, notes) VALUES (?, ?, ?, ?, ?)',
-            (lesson.title, lesson.start_time, lesson.end_time, lesson.student_name, lesson.notes)
+    try:
+        print(f"Received lesson data: {lesson}")  # Для отладки
+        
+        loop = asyncio.get_event_loop()
+        conn = get_db_connection()
+        c = conn.cursor()
+        
+        # Преобразуем строки в datetime
+        start_time = datetime.strptime(lesson.start_time, "%Y-%m-%dT%H:%M:%S")
+        end_time = datetime.strptime(lesson.end_time, "%Y-%m-%dT%H:%M:%S")
+        
+        print(f"Converted times: start={start_time}, end={end_time}")  # Для отладки
+        
+        await loop.run_in_executor(
+            db_pool,
+            lambda: c.execute(
+                'INSERT INTO lessons (title, start_time, end_time, student_name, notes) VALUES (?, ?, ?, ?, ?)',
+                (lesson.title, start_time, end_time, lesson.student_name, lesson.notes)
+            )
         )
-    )
-    conn.commit()
-    return {"message": "Lesson created successfully"}
+        conn.commit()
+        return {"message": "Lesson created successfully"}
+    except Exception as e:
+        print(f"Error creating lesson: {str(e)}")  # Для отладки
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
 
 @app.get("/api/lessons")
 async def get_lessons():
@@ -150,9 +176,25 @@ async def get_lessons():
     
     lessons = await loop.run_in_executor(
         db_pool,
-        lambda: c.execute('SELECT * FROM lessons ORDER BY start_time').fetchall()
+        lambda: c.execute('''
+            SELECT id, title, start_time, end_time, student_name, notes 
+            FROM lessons 
+            ORDER BY start_time
+        ''').fetchall()
     )
-    return lessons
+    
+    # Преобразуем результаты в список словарей
+    return [
+        {
+            "id": lesson[0],
+            "title": lesson[1],
+            "start_time": lesson[2],
+            "end_time": lesson[3],
+            "student_name": lesson[4],
+            "notes": lesson[5]
+        }
+        for lesson in lessons
+    ]
 
 @app.delete("/api/lessons/{lesson_id}")
 async def delete_lesson(lesson_id: int):

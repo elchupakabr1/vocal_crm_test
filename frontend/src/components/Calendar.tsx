@@ -131,24 +131,14 @@ const Calendar: React.FC = () => {
 
       console.log('Raw server data:', response.data); // Для отладки
 
-      const transformedLessons = response.data.map((lesson: any) => {
-        // Создаем даты с учетом часового пояса
-        const startTime = new Date(lesson[2]);
-        const endTime = new Date(lesson[3]);
-        
-        // Корректируем время на часовой пояс
-        startTime.setHours(startTime.getHours() + startTime.getTimezoneOffset() / 60);
-        endTime.setHours(endTime.getHours() + endTime.getTimezoneOffset() / 60);
-
-        return {
-          id: lesson[0],
-          title: lesson[1],
-          start_time: startTime,
-          end_time: endTime,
-          student_name: lesson[4],
-          notes: lesson[5] || '',
-        };
-      });
+      const transformedLessons = response.data.map((lesson: any) => ({
+        id: lesson.id,
+        title: lesson.title,
+        start_time: new Date(lesson.start_time),
+        end_time: new Date(lesson.end_time),
+        student_name: lesson.student_name,
+        notes: lesson.notes || '',
+      }));
 
       console.log('Transformed lessons:', transformedLessons); // Для отладки
       setLessons(transformedLessons);
@@ -211,28 +201,28 @@ const Calendar: React.FC = () => {
 
       const endTime = addMinutes(newLesson.start_time, newLesson.duration);
       
-      // Корректируем время для отправки на сервер
-      const adjustedStartTime = new Date(newLesson.start_time);
-      const adjustedEndTime = new Date(endTime);
-      
-      adjustedStartTime.setHours(adjustedStartTime.getHours() - adjustedStartTime.getTimezoneOffset() / 60);
-      adjustedEndTime.setHours(adjustedEndTime.getHours() - adjustedEndTime.getTimezoneOffset() / 60);
+      // Форматируем даты в ISO формат с учетом часового пояса
+      const startTimeISO = format(newLesson.start_time, "yyyy-MM-dd'T'HH:mm:ss");
+      const endTimeISO = format(endTime, "yyyy-MM-dd'T'HH:mm:ss");
       
       const lessonData = {
-        id: 0,
         title: newLesson.title,
         student_name: newLesson.student_name,
-        start_time: format(adjustedStartTime, "yyyy-MM-dd HH:mm:ss"),
-        end_time: format(adjustedEndTime, "yyyy-MM-dd HH:mm:ss"),
+        start_time: startTimeISO,
+        end_time: endTimeISO,
         notes: newLesson.notes || '',
       };
 
-      await axios.post('http://localhost:8000/api/lessons', lessonData, {
+      console.log('Sending lesson data:', lessonData); // Для отладки
+
+      const response = await axios.post('http://localhost:8000/api/lessons', lessonData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
+
+      console.log('Server response:', response.data); // Для отладки
 
       setOpenDialog(false);
       setNewLesson({
@@ -245,20 +235,26 @@ const Calendar: React.FC = () => {
       fetchLessons();
     } catch (error) {
       console.error('Error adding lesson:', error);
+      if (axios.isAxiosError(error) && error.response) {
+        console.error('Server response:', error.response.data);
+        console.error('Request data:', error.config?.data);
+      }
     }
   }, [newLesson]);
 
   // Мемоизированный компонент для отображения урока
-  const LessonItem = memo(({ lesson, onClick }: { lesson: Lesson; onClick: (lesson: Lesson) => void }) => {
+  const LessonItem = memo(({ lesson }: { lesson: Lesson }) => {
     const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
     const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
       event.stopPropagation();
       setMenuAnchorEl(event.currentTarget);
+      setSelectedLesson(lesson);
     };
 
     const handleMenuClose = () => {
       setMenuAnchorEl(null);
+      setSelectedLesson(null);
     };
 
     const handleEditClick = () => {
@@ -281,10 +277,7 @@ const Calendar: React.FC = () => {
 
     return (
       <Paper 
-        onClick={(e) => {
-          e.stopPropagation();
-          onClick(lesson);
-        }}
+        onClick={handleMenuClick}
         sx={{ 
           p: 2, 
           mb: 2,
@@ -309,10 +302,7 @@ const Calendar: React.FC = () => {
               </Typography>
             )}
           </Box>
-          <IconButton
-            size="small"
-            onClick={handleMenuClick}
-          >
+          <IconButton onClick={handleMenuClick}>
             <MoreVertIcon />
           </IconButton>
         </Box>
@@ -365,8 +355,7 @@ const Calendar: React.FC = () => {
       {lessons.map((lesson) => (
         <LessonItem 
           key={lesson.id} 
-          lesson={lesson} 
-          onClick={(lesson) => handleTimeClick(lesson.start_time)}
+          lesson={lesson}
         />
       ))}
     </TableCell>
@@ -412,7 +401,6 @@ const Calendar: React.FC = () => {
                       <LessonItem
                         key={lesson.id}
                         lesson={lesson}
-                        onClick={(lesson) => handleTimeClick(lesson.start_time)}
                       />
                     ))}
                   </TableCell>
@@ -423,7 +411,7 @@ const Calendar: React.FC = () => {
         </TableBody>
       </Table>
     );
-  }, [weekDays, getLessonsForHour, handleTimeClick]);
+  }, [weekDays, getLessonsForHour]);
 
   // Оптимизация рендеринга дневного представления
   const renderDayView = useCallback(() => {
@@ -441,7 +429,6 @@ const Calendar: React.FC = () => {
                     <LessonItem
                       key={lesson.id}
                       lesson={lesson}
-                      onClick={(lesson) => handleTimeClick(lesson.start_time)}
                     />
                   ))}
                 </TableCell>
@@ -451,7 +438,7 @@ const Calendar: React.FC = () => {
         </TableBody>
       </Table>
     );
-  }, [selectedDate, getLessonsForHour, handleTimeClick]);
+  }, [selectedDate, getLessonsForHour]);
 
   // Оптимизация рендеринга представления
   const renderView = useCallback(() => {
