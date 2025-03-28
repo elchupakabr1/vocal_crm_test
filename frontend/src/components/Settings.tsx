@@ -34,7 +34,7 @@ const Settings: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        'http://localhost:8000/api/settings/password',
+        `${process.env.REACT_APP_API_URL}/settings/password`,
         {
           current_password: currentPassword,
           new_password: newPassword,
@@ -64,7 +64,7 @@ const Settings: React.FC = () => {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        'http://localhost:8000/api/settings/telegram',
+        `${process.env.REACT_APP_API_URL}/settings/telegram`,
         {
           bot_token: telegramToken,
           chat_id: chatId,

@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await axios.post('http://localhost:8000/token', formData, {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/token`, formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
