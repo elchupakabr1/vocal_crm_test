@@ -123,7 +123,7 @@ const Calendar: React.FC = () => {
         return;
       }
 
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/lessons`, {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/lessons`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -469,7 +469,7 @@ const Calendar: React.FC = () => {
         return;
       }
 
-      await axios.delete(`${process.env.REACT_APP_API_URL}/lessons/${lessonId}`, {
+      await axios.delete(`${process.env.REACT_APP_API_URL}/api/lessons/${lessonId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -502,7 +502,7 @@ const Calendar: React.FC = () => {
         notes: editingLesson.notes || '',
       };
 
-      await axios.put(`${process.env.REACT_APP_API_URL}/lessons/${editingLesson.id}`, lessonData, {
+      await axios.put(`${process.env.REACT_APP_API_URL}/api/lessons/${editingLesson.id}`, lessonData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
