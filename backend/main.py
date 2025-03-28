@@ -153,7 +153,7 @@ async def options_token():
     return JSONResponse(
         content={},
         headers={
-            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Origin": "http://213.226.124.30:3000",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
             "Access-Control-Allow-Credentials": "true",
@@ -170,7 +170,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={"detail": "Incorrect username or password"},
                 headers={
-                    "Access-Control-Allow-Origin": "http://localhost:3000",
+                    "Access-Control-Allow-Origin": "http://213.226.124.30:3000",
                     "Access-Control-Allow-Credentials": "true",
                     "WWW-Authenticate": "Bearer"
                 }
@@ -180,7 +180,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         return JSONResponse(
             content={"access_token": access_token, "token_type": "bearer"},
             headers={
-                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Origin": "http://213.226.124.30:3000",
                 "Access-Control-Allow-Credentials": "true"
             }
         )
@@ -190,7 +190,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
             status_code=500,
             content={"detail": str(e)},
             headers={
-                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Origin": "http://213.226.124.30:3000",
                 "Access-Control-Allow-Credentials": "true"
             }
         )
