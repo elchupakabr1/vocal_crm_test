@@ -15,15 +15,22 @@ from dotenv import load_dotenv
 from functools import lru_cache
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from sqlalchemy.orm import Session
+from database import SessionLocal, engine
+import models
+import schemas
 
 load_dotenv()
+
+# Создание таблиц
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # В продакшене замените на конкретные домены
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
