@@ -1,14 +1,20 @@
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.encoders import jsonable_encoder
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, List
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 import sqlite3
 import os
 from dotenv import load_dotenv
+from functools import lru_cache
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 load_dotenv()
 
@@ -23,6 +29,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Добавляем сжатие ответов
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 # Настройки безопасности
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
@@ -30,6 +39,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Создаем пул потоков для операций с БД
+db_pool = ThreadPoolExecutor(max_workers=4)
+
+# Кэширование подключений к БД
+@lru_cache(maxsize=1)
+def get_db_connection():
+    return sqlite3.connect('vocal_schedule.db', check_same_thread=False)
 
 # Модели данных
 class Token(BaseModel):
@@ -53,7 +70,7 @@ class Lesson(BaseModel):
 
 # Функции для работы с базой данных
 def init_db():
-    conn = sqlite3.connect('vocal_schedule.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -72,7 +89,6 @@ def init_db():
         )
     ''')
     conn.commit()
-    conn.close()
 
 # Функции для работы с токенами
 def create_access_token(data: dict):
@@ -88,11 +104,10 @@ init_db()
 # Маршруты API
 @app.post("/token", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    conn = sqlite3.connect('vocal_schedule.db')
+    conn = get_db_connection()
     c = conn.cursor()
     c.execute('SELECT password FROM users WHERE username = ?', (form_data.username,))
     result = c.fetchone()
-    conn.close()
     
     if not result or not pwd_context.verify(form_data.password, result[0]):
         raise HTTPException(
@@ -106,34 +121,54 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
 
 @app.post("/api/lessons")
 async def create_lesson(lesson: Lesson):
-    conn = sqlite3.connect('vocal_schedule.db')
+    loop = asyncio.get_event_loop()
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute('''
-        INSERT INTO lessons (title, start_time, end_time, student_name, notes)
-        VALUES (?, ?, ?, ?, ?)
-    ''', (lesson.title, lesson.start_time, lesson.end_time, lesson.student_name, lesson.notes))
+    
+    await loop.run_in_executor(
+        db_pool,
+        lambda: c.execute(
+            'INSERT INTO lessons (title, start_time, end_time, student_name, notes) VALUES (?, ?, ?, ?, ?)',
+            (lesson.title, lesson.start_time, lesson.end_time, lesson.student_name, lesson.notes)
+        )
+    )
     conn.commit()
-    conn.close()
     return {"message": "Lesson created successfully"}
 
 @app.get("/api/lessons")
 async def get_lessons():
-    conn = sqlite3.connect('vocal_schedule.db')
+    loop = asyncio.get_event_loop()
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute('SELECT * FROM lessons ORDER BY start_time')
-    lessons = c.fetchall()
-    conn.close()
+    
+    lessons = await loop.run_in_executor(
+        db_pool,
+        lambda: c.execute('SELECT * FROM lessons ORDER BY start_time').fetchall()
+    )
     return lessons
 
 @app.delete("/api/lessons/{lesson_id}")
 async def delete_lesson(lesson_id: int):
-    conn = sqlite3.connect('vocal_schedule.db')
+    loop = asyncio.get_event_loop()
+    conn = get_db_connection()
     c = conn.cursor()
-    c.execute('DELETE FROM lessons WHERE id = ?', (lesson_id,))
+    
+    await loop.run_in_executor(
+        db_pool,
+        lambda: c.execute('DELETE FROM lessons WHERE id = ?', (lesson_id,))
+    )
     conn.commit()
-    conn.close()
     return {"message": "Lesson deleted successfully"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        workers=4,  # Количество рабочих процессов
+        loop="uvloop",  # Использование uvloop для лучшей производительности
+        limit_concurrency=1000,  # Ограничение количества одновременных соединений
+        timeout_keep_alive=30,  # Таймаут для keep-alive соединений
+        access_log=False  # Отключение логов доступа для снижения нагрузки
+    ) 

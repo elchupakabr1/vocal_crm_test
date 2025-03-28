@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import {
   Container,
   Paper,
@@ -44,7 +44,7 @@ import {
   isToday,
   parseISO,
   setHours,
-  setMinutes,
+  setMinutes
 } from 'date-fns';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import axios from 'axios';
@@ -60,6 +60,42 @@ interface Lesson {
 }
 
 type ViewType = 'day' | 'week' | 'month';
+
+// Вспомогательная функция для разбиения массива на чанки
+const chunk = <T,>(array: T[], size: number): T[][] => {
+  return Array.from({ length: Math.ceil(array.length / size) }, (_, i) =>
+    array.slice(i * size, i * size + size)
+  );
+};
+
+// Выносим константы за пределы компонента
+const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+
+// Мемоизированный компонент для отображения времени
+const TimeCell = memo(({ hour }: { hour: number }) => (
+  <TableCell>{format(setHours(new Date(), hour), 'HH:mm')}</TableCell>
+));
+
+// Мемоизированный компонент для заголовка таблицы
+const TableHeader = memo(({ viewType, weekDays }: { viewType: ViewType; weekDays: Date[] }) => (
+  <TableHead>
+    <TableRow>
+      {viewType !== 'month' && <TableCell>Время</TableCell>}
+      {viewType === 'month' ? (
+        WEEKDAYS.map((day) => (
+          <TableCell key={day}>{day}</TableCell>
+        ))
+      ) : (
+        weekDays.map((date) => (
+          <TableCell key={date.toISOString()}>
+            {format(date, 'EEEE, d MMMM')}
+          </TableCell>
+        ))
+      )}
+    </TableRow>
+  </TableHead>
+));
 
 const Calendar: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -78,11 +114,8 @@ const Calendar: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
 
-  useEffect(() => {
-    fetchLessons();
-  }, []);
-
-  const fetchLessons = async () => {
+  // Функция для загрузки уроков
+  const fetchLessons = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -95,30 +128,80 @@ const Calendar: React.FC = () => {
           'Authorization': `Bearer ${token}`,
         },
       });
-      
-      console.log('Полученные данные с сервера:', response.data);
-      
-      // Преобразуем массив в объекты с правильными ключами
-      const processedLessons = response.data.map((lesson: any[]) => ({
-        id: lesson[0],
-        title: lesson[1],
-        start_time: new Date(lesson[2]),
-        end_time: new Date(lesson[3]),
-        student_name: lesson[4],
-        notes: lesson[5] || '',
-      }));
-      
-      console.log('Обработанные занятия:', processedLessons);
-      setLessons(processedLessons);
+
+      console.log('Raw server data:', response.data); // Для отладки
+
+      const transformedLessons = response.data.map((lesson: any) => {
+        // Создаем даты с учетом часового пояса
+        const startTime = new Date(lesson[2]);
+        const endTime = new Date(lesson[3]);
+        
+        // Корректируем время на часовой пояс
+        startTime.setHours(startTime.getHours() + startTime.getTimezoneOffset() / 60);
+        endTime.setHours(endTime.getHours() + endTime.getTimezoneOffset() / 60);
+
+        return {
+          id: lesson[0],
+          title: lesson[1],
+          start_time: startTime,
+          end_time: endTime,
+          student_name: lesson[4],
+          notes: lesson[5] || '',
+        };
+      });
+
+      console.log('Transformed lessons:', transformedLessons); // Для отладки
+      setLessons(transformedLessons);
     } catch (error) {
       console.error('Error fetching lessons:', error);
-      if (axios.isAxiosError(error) && error.response) {
-        console.error('Response data:', error.response.data);
-      }
     }
-  };
+  }, []);
 
-  const handleAddLesson = async () => {
+  // Оптимизация вычисляемых значений
+  const monthStart = useMemo(() => startOfMonth(selectedDate), [selectedDate]);
+  const monthEnd = useMemo(() => endOfMonth(selectedDate), [selectedDate]);
+  const days = useMemo(() => eachDayOfInterval({ start: monthStart, end: monthEnd }), [monthStart, monthEnd]);
+  const weeks = useMemo(() => chunk(days, 7), [days]);
+  const weekDays = useMemo(() => eachDayOfInterval({
+    start: startOfWeek(selectedDate),
+    end: endOfWeek(selectedDate),
+  }), [selectedDate]);
+
+  // Оптимизация функции фильтрации уроков
+  const getLessonsForDate = useCallback((date: Date) => {
+    return lessons.filter(lesson => {
+      const lessonDate = new Date(lesson.start_time);
+      return isSameDay(lessonDate, date);
+    });
+  }, [lessons]);
+
+  // Оптимизация функции получения уроков за час
+  const getLessonsForHour = useCallback((date: Date, hour: number) => {
+    const startOfHour = setHours(date, hour);
+    const endOfHour = setHours(date, hour + 1);
+    
+    return lessons.filter(lesson => {
+      const lessonStart = new Date(lesson.start_time);
+      return lessonStart >= startOfHour && lessonStart < endOfHour;
+    });
+  }, [lessons]);
+
+  // Мемоизация функций
+  const handleDateClick = useCallback((date: Date) => {
+    setSelectedDate(date);
+    setViewType('day');
+  }, []);
+
+  const handleTimeClick = useCallback((date: Date) => {
+    setSelectedDate(date);
+    setNewLesson(prev => ({
+      ...prev,
+      start_time: date,
+    }));
+    setOpenDialog(true);
+  }, []);
+
+  const handleAddLesson = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -128,16 +211,21 @@ const Calendar: React.FC = () => {
 
       const endTime = addMinutes(newLesson.start_time, newLesson.duration);
       
+      // Корректируем время для отправки на сервер
+      const adjustedStartTime = new Date(newLesson.start_time);
+      const adjustedEndTime = new Date(endTime);
+      
+      adjustedStartTime.setHours(adjustedStartTime.getHours() - adjustedStartTime.getTimezoneOffset() / 60);
+      adjustedEndTime.setHours(adjustedEndTime.getHours() - adjustedEndTime.getTimezoneOffset() / 60);
+      
       const lessonData = {
         id: 0,
         title: newLesson.title,
         student_name: newLesson.student_name,
-        start_time: format(newLesson.start_time, "yyyy-MM-dd HH:mm:ss"),
-        end_time: format(endTime, "yyyy-MM-dd HH:mm:ss"),
+        start_time: format(adjustedStartTime, "yyyy-MM-dd HH:mm:ss"),
+        end_time: format(adjustedEndTime, "yyyy-MM-dd HH:mm:ss"),
         notes: newLesson.notes || '',
       };
-
-      console.log('Отправляемые данные:', lessonData);
 
       await axios.post('http://localhost:8000/api/lessons', lessonData, {
         headers: {
@@ -157,31 +245,234 @@ const Calendar: React.FC = () => {
       fetchLessons();
     } catch (error) {
       console.error('Error adding lesson:', error);
-      if (axios.isAxiosError(error) && error.response) {
-        console.error('Response data:', error.response.data);
-      }
     }
-  };
+  }, [newLesson]);
 
-  const getLessonsForDate = (date: Date) => {
-    return lessons.filter(lesson => {
-      return isSameDay(lesson.start_time, date);
-    });
-  };
+  // Мемоизированный компонент для отображения урока
+  const LessonItem = memo(({ lesson, onClick }: { lesson: Lesson; onClick: (lesson: Lesson) => void }) => {
+    const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
-  const handleDateClick = (date: Date) => {
-    setSelectedDate(date);
-    setViewType('day');
-  };
+    const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
+      event.stopPropagation();
+      setMenuAnchorEl(event.currentTarget);
+    };
 
-  const handleTimeClick = (date: Date) => {
-    setSelectedDate(date);
-    setNewLesson(prev => ({
-      ...prev,
-      start_time: date,
-    }));
-    setOpenDialog(true);
-  };
+    const handleMenuClose = () => {
+      setMenuAnchorEl(null);
+    };
+
+    const handleEditClick = () => {
+      setEditingLesson(lesson);
+      setNewLesson({
+        title: lesson.title,
+        student_name: lesson.student_name,
+        start_time: lesson.start_time,
+        duration: 60,
+        notes: lesson.notes || '',
+      });
+      setOpenDialog(true);
+      handleMenuClose();
+    };
+
+    const handleDeleteClick = () => {
+      handleDeleteLesson(lesson.id);
+      handleMenuClose();
+    };
+
+    return (
+      <Paper 
+        onClick={(e) => {
+          e.stopPropagation();
+          onClick(lesson);
+        }}
+        sx={{ 
+          p: 2, 
+          mb: 2,
+          cursor: 'pointer',
+          position: 'relative',
+          '&:hover': {
+            backgroundColor: 'rgba(25, 118, 210, 0.05)',
+          },
+        }}
+      >
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <Box>
+            <Typography variant="subtitle1">{lesson.title}</Typography>
+            <Typography variant="body2">
+              {format(new Date(lesson.start_time), 'HH:mm')} - 
+              {format(new Date(lesson.end_time), 'HH:mm')}
+            </Typography>
+            <Typography variant="body2">{lesson.student_name}</Typography>
+            {lesson.notes && (
+              <Typography variant="body2" color="text.secondary">
+                {lesson.notes}
+              </Typography>
+            )}
+          </Box>
+          <IconButton
+            size="small"
+            onClick={handleMenuClick}
+          >
+            <MoreVertIcon />
+          </IconButton>
+        </Box>
+        <Menu
+          anchorEl={menuAnchorEl}
+          open={Boolean(menuAnchorEl)}
+          onClose={handleMenuClose}
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          PaperProps={{
+            sx: {
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              minWidth: 30,
+            }
+          }}
+        >
+          <MenuItem onClick={handleEditClick}>Редактировать</MenuItem>
+          <MenuItem onClick={handleDeleteClick}>Удалить</MenuItem>
+        </Menu>
+      </Paper>
+    );
+  });
+
+  // Мемоизированный компонент для отображения дня
+  const DayCell = memo(({ date, lessons, onClick }: { 
+    date: Date; 
+    lessons: Lesson[]; 
+    onClick: (date: Date) => void;
+  }) => (
+    <TableCell 
+      onClick={() => onClick(date)}
+      sx={{ 
+        cursor: 'pointer',
+        '&:hover': {
+          backgroundColor: 'rgba(25, 118, 210, 0.05)',
+        },
+      }}
+    >
+      <Typography variant="body2">
+        {format(date, 'd')}
+      </Typography>
+      {lessons.map((lesson) => (
+        <LessonItem 
+          key={lesson.id} 
+          lesson={lesson} 
+          onClick={(lesson) => handleTimeClick(lesson.start_time)}
+        />
+      ))}
+    </TableCell>
+  ));
+
+  // Оптимизация рендеринга месячного представления
+  const renderMonthView = useCallback(() => {
+    return (
+      <Table>
+        <TableHeader viewType="month" weekDays={[]} />
+        <TableBody>
+          {weeks.map((week: Date[], weekIndex: number) => (
+            <TableRow key={weekIndex}>
+              {week.map((date: Date) => (
+                <DayCell
+                  key={date.toISOString()}
+                  date={date}
+                  lessons={getLessonsForDate(date)}
+                  onClick={handleDateClick}
+                />
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  }, [weeks, getLessonsForDate, handleDateClick]);
+
+  // Оптимизация рендеринга недельного представления
+  const renderWeekView = useCallback(() => {
+    return (
+      <Table>
+        <TableHeader viewType="week" weekDays={weekDays} />
+        <TableBody>
+          {HOURS.map((hour) => (
+            <TableRow key={hour}>
+              <TimeCell hour={hour} />
+              {weekDays.map((date) => {
+                const hourLessons = getLessonsForHour(date, hour);
+                return (
+                  <TableCell key={`${date.toISOString()}-${hour}`}>
+                    {hourLessons.map((lesson) => (
+                      <LessonItem
+                        key={lesson.id}
+                        lesson={lesson}
+                        onClick={(lesson) => handleTimeClick(lesson.start_time)}
+                      />
+                    ))}
+                  </TableCell>
+                );
+              })}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  }, [weekDays, getLessonsForHour, handleTimeClick]);
+
+  // Оптимизация рендеринга дневного представления
+  const renderDayView = useCallback(() => {
+    return (
+      <Table>
+        <TableHeader viewType="day" weekDays={[selectedDate]} />
+        <TableBody>
+          {HOURS.map((hour) => {
+            const hourLessons = getLessonsForHour(selectedDate, hour);
+            return (
+              <TableRow key={hour}>
+                <TimeCell hour={hour} />
+                <TableCell>
+                  {hourLessons.map((lesson) => (
+                    <LessonItem
+                      key={lesson.id}
+                      lesson={lesson}
+                      onClick={(lesson) => handleTimeClick(lesson.start_time)}
+                    />
+                  ))}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
+  }, [selectedDate, getLessonsForHour, handleTimeClick]);
+
+  // Оптимизация рендеринга представления
+  const renderView = useCallback(() => {
+    switch (viewType) {
+      case 'day':
+        return renderDayView();
+      case 'week':
+        return renderWeekView();
+      case 'month':
+        return renderMonthView();
+      default:
+        return renderDayView();
+    }
+  }, [viewType, renderDayView, renderWeekView, renderMonthView]);
+
+  // Оптимизация эффекта загрузки данных
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchLessons();
+    return () => controller.abort();
+  }, [fetchLessons]);
 
   const handleDeleteLesson = async (lessonId: number) => {
     try {
@@ -239,18 +530,18 @@ const Calendar: React.FC = () => {
     }
   };
 
-  const handleLessonMenuClick = (event: React.MouseEvent<HTMLElement>, lesson: Lesson) => {
+  const handleLessonMenuClick = useCallback((event: React.MouseEvent<HTMLElement>, lesson: Lesson) => {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
     setSelectedLesson(lesson);
-  };
+  }, []);
 
-  const handleLessonMenuClose = () => {
+  const handleLessonMenuClose = useCallback(() => {
     setAnchorEl(null);
     setSelectedLesson(null);
-  };
+  }, []);
 
-  const handleEditClick = () => {
+  const handleEditClick = useCallback(() => {
     if (selectedLesson) {
       setEditingLesson(selectedLesson);
       setNewLesson({
@@ -263,248 +554,14 @@ const Calendar: React.FC = () => {
       setOpenDialog(true);
     }
     handleLessonMenuClose();
-  };
+  }, [selectedLesson, handleLessonMenuClose]);
 
-  const handleDeleteClick = () => {
+  const handleDeleteClick = useCallback(() => {
     if (selectedLesson) {
       handleDeleteLesson(selectedLesson.id);
     }
     handleLessonMenuClose();
-  };
-
-  const renderMonthView = () => {
-    const monthStart = startOfMonth(selectedDate);
-    const monthEnd = endOfMonth(selectedDate);
-    const weeks = eachWeekOfInterval({ start: monthStart, end: monthEnd });
-    const weekDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-
-    return (
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              {weekDays.map(day => (
-                <TableCell key={day} align="center">
-                  <Typography variant="subtitle1">{day}</Typography>
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {weeks.map((week, weekIndex) => {
-              const weekDays = eachDayOfInterval({ 
-                start: startOfWeek(week), 
-                end: endOfWeek(week) 
-              });
-              
-              return (
-                <TableRow key={weekIndex}>
-                  {weekDays.map((day, dayIndex) => {
-                    const dayLessons = getLessonsForDate(day);
-                    const isCurrentMonth = isSameMonth(day, selectedDate);
-                    const isCurrentDay = isToday(day);
-
-                    return (
-                      <TableCell 
-                        key={dayIndex}
-                        onClick={() => handleDateClick(day)}
-                        sx={{
-                          minHeight: '100px',
-                          backgroundColor: isCurrentDay ? 'rgba(25, 118, 210, 0.1)' : 'inherit',
-                          opacity: isCurrentMonth ? 1 : 0.5,
-                          cursor: 'pointer',
-                          '&:hover': {
-                            backgroundColor: 'rgba(25, 118, 210, 0.05)',
-                          },
-                        }}
-                      >
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
-                            mb: 1,
-                            fontWeight: isCurrentDay ? 'bold' : 'normal',
-                          }}
-                        >
-                          {format(day, 'd')}
-                        </Typography>
-                        {dayLessons.map((lesson) => (
-                          <Paper 
-                            key={lesson.id} 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleTimeClick(lesson.start_time);
-                            }}
-                            sx={{ 
-                              p: 0.5, 
-                              mb: 0.5,
-                              fontSize: '0.75rem',
-                              backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                              cursor: 'pointer',
-                              '&:hover': {
-                                backgroundColor: 'rgba(25, 118, 210, 0.2)',
-                              },
-                            }}
-                          >
-                            <Typography variant="caption" display="block">
-                              {format(lesson.start_time, 'HH:mm')}
-                            </Typography>
-                            <Typography variant="caption" display="block" noWrap>
-                              {lesson.title}
-                            </Typography>
-                          </Paper>
-                        ))}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    );
-  };
-
-  const renderWeekView = () => {
-    const weekStart = startOfWeek(selectedDate);
-    const weekEnd = endOfWeek(selectedDate);
-    const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
-
-    return (
-      <Grid container spacing={2}>
-        {weekDays.map((day) => (
-          <Grid item xs={12} sm={6} md={4} key={day.toISOString()}>
-            <Card 
-              onClick={() => handleDateClick(day)}
-              sx={{ 
-                cursor: 'pointer',
-                '&:hover': {
-                  backgroundColor: 'rgba(25, 118, 210, 0.05)',
-                },
-              }}
-            >
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  {format(day, 'EEEE, d MMMM', { locale: ru })}
-                </Typography>
-                {getLessonsForDate(day).map((lesson) => (
-                  <Paper 
-                    key={lesson.id} 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTimeClick(lesson.start_time);
-                    }}
-                    sx={{ 
-                      p: 1, 
-                      mb: 1,
-                      cursor: 'pointer',
-                      '&:hover': {
-                        backgroundColor: 'rgba(25, 118, 210, 0.1)',
-                      },
-                    }}
-                  >
-                    <Typography variant="subtitle1">{lesson.title}</Typography>
-                    <Typography variant="body2">
-                      {format(lesson.start_time, 'HH:mm')} - 
-                      {format(lesson.end_time, 'HH:mm')}
-                    </Typography>
-                    <Typography variant="body2">{lesson.student_name}</Typography>
-                  </Paper>
-                ))}
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    );
-  };
-
-  const renderDayView = () => {
-    const dayLessons = getLessonsForDate(selectedDate);
-    const hours = Array.from({ length: 24 }, (_, i) => i);
-    
-    return (
-      <Box>
-        <Typography variant="h6" gutterBottom>
-          {format(selectedDate, 'EEEE, d MMMM yyyy', { locale: ru })}
-        </Typography>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableBody>
-              {hours.map((hour) => {
-                const hourDate = setHours(setMinutes(selectedDate, 0), hour);
-                const hourLessons = dayLessons.filter(lesson => 
-                  format(lesson.start_time, 'HH') === format(hourDate, 'HH')
-                );
-
-                return (
-                  <TableRow key={hour}>
-                    <TableCell sx={{ width: '100px' }}>
-                      <Typography variant="body2">
-                        {format(hourDate, 'HH:mm')}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      {hourLessons.map((lesson) => (
-                        <Paper 
-                          key={lesson.id} 
-                          onClick={() => handleTimeClick(lesson.start_time)}
-                          sx={{ 
-                            p: 2, 
-                            mb: 2,
-                            cursor: 'pointer',
-                            position: 'relative',
-                            '&:hover': {
-                              backgroundColor: 'rgba(25, 118, 210, 0.05)',
-                            },
-                          }}
-                        >
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <Box>
-                              <Typography variant="subtitle1">{lesson.title}</Typography>
-                              <Typography variant="body2">
-                                {format(lesson.start_time, 'HH:mm')} - 
-                                {format(lesson.end_time, 'HH:mm')}
-                              </Typography>
-                              <Typography variant="body2">{lesson.student_name}</Typography>
-                              {lesson.notes && (
-                                <Typography variant="body2" color="text.secondary">
-                                  {lesson.notes}
-                                </Typography>
-                              )}
-                            </Box>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleLessonMenuClick(e, lesson)}
-                            >
-                              <MoreVertIcon />
-                            </IconButton>
-                          </Box>
-                        </Paper>
-                      ))}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Box>
-    );
-  };
-
-  const renderView = () => {
-    switch (viewType) {
-      case 'day':
-        return renderDayView();
-      case 'week':
-        return renderWeekView();
-      case 'month':
-        return renderMonthView();
-      default:
-        return renderDayView();
-    }
-  };
+  }, [selectedLesson, handleLessonMenuClose]);
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -604,18 +661,9 @@ const Calendar: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
-
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleLessonMenuClose}
-        >
-          <MenuItem onClick={handleEditClick}>Редактировать</MenuItem>
-          <MenuItem onClick={handleDeleteClick}>Удалить</MenuItem>
-        </Menu>
       </Paper>
     </Container>
   );
 };
 
-export default Calendar; 
+export default memo(Calendar); 

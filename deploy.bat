@@ -34,6 +34,7 @@ call venv\Scripts\activate.bat
 echo Installing backend dependencies...
 cd backend
 pip install -r requirements.txt
+pip install uvloop  # Установка uvloop для оптимизации производительности
 
 :: Создание файла .env для бэкенда
 echo Creating backend .env file...
@@ -53,25 +54,35 @@ echo Installing frontend dependencies...
 cd frontend
 npm install
 
+:: Оптимизация сборки фронтенда
+echo Optimizing frontend build...
+npm install --save-dev compression-webpack-plugin
+npm install --save-dev terser-webpack-plugin
+npm install --save-dev css-minimizer-webpack-plugin
+
 :: Создание файла .env для фронтенда
 echo Creating frontend .env file...
 (
 echo REACT_APP_API_URL=http://localhost:8000
+echo GENERATE_SOURCEMAP=false
 ) > .env
 cd ..
 
 :: Создание скриптов запуска
 echo Creating startup scripts...
 
-:: Скрипт для запуска бэкенда
+:: Скрипт для запуска бэкенда с оптимизациями
 echo @echo off > start_backend.bat
 echo call venv\Scripts\activate.bat >> start_backend.bat
 echo cd backend >> start_backend.bat
-echo uvicorn main:app --reload >> start_backend.bat
+echo set PYTHONUNBUFFERED=1 >> start_backend.bat
+echo set PYTHONHASHSEED=random >> start_backend.bat
+echo uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4 --loop uvloop --limit-concurrency 1000 --timeout-keep-alive 30 --access-log >> start_backend.bat
 
-:: Скрипт для запуска фронтенда
+:: Скрипт для запуска фронтенда с оптимизациями
 echo @echo off > start_frontend.bat
 echo cd frontend >> start_frontend.bat
+echo set NODE_OPTIONS=--max-old-space-size=4096 >> start_frontend.bat
 echo npm start >> start_frontend.bat
 
 :: Скрипт для запуска Telegram бота
@@ -98,6 +109,12 @@ echo.
 echo Default login credentials:
 echo Username: admin
 echo Password: admin
+echo.
+echo Performance Optimizations:
+echo - Backend uses uvloop for better performance
+echo - Frontend is optimized with webpack
+echo - Database connections are pooled
+echo - API responses are compressed
 echo.
 echo Note: Make sure to update the Telegram bot token and chat ID in backend/.env
 ) > DEPLOYMENT_README.txt
