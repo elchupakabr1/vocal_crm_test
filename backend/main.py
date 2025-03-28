@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+# -*- coding: utf-8 -*-
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -30,10 +31,11 @@ app = FastAPI()
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # В продакшене замените на конкретные домены
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # Добавляем сжатие ответов
@@ -119,105 +121,123 @@ def create_access_token(data: dict):
 # Инициализация базы данных
 init_db()
 
-# Маршруты API
-@app.post("/token", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute('SELECT hashed_password FROM users WHERE username = ?', (form_data.username,))
-    result = c.fetchone()
-    
-    if not result or not pwd_context.verify(form_data.password, result[0]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    access_token = create_access_token(data={"sub": form_data.username})
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@app.post("/api/lessons")
-async def create_lesson(lesson: Lesson):
+# Dependency
+def get_db():
+    db = SessionLocal()
     try:
-        print(f"Received lesson data: {lesson}")  # Для отладки
-        
-        loop = asyncio.get_event_loop()
-        conn = get_db_connection()
-        c = conn.cursor()
-        
-        # Преобразуем строки в datetime
-        start_time = datetime.strptime(lesson.start_time, "%Y-%m-%dT%H:%M:%S")
-        end_time = datetime.strptime(lesson.end_time, "%Y-%m-%dT%H:%M:%S")
-        
-        print(f"Converted times: start={start_time}, end={end_time}")  # Для отладки
-        
-        await loop.run_in_executor(
-            db_pool,
-            lambda: c.execute(
-                'INSERT INTO lessons (title, start_time, end_time, student_name, notes) VALUES (?, ?, ?, ?, ?)',
-                (lesson.title, start_time, end_time, lesson.student_name, lesson.notes)
+        yield db
+    finally:
+        db.close()
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = schemas.TokenData(username=username)
+    except JWTError:
+        raise credentials_exception
+    user = db.query(models.User).filter(models.User.username == token_data.username).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+@app.options("/token")
+async def options_token():
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+@app.post("/token")
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    try:
+        user = db.query(models.User).filter(models.User.username == form_data.username).first()
+        if not user or not pwd_context.verify(form_data.password, user.hashed_password):
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Incorrect username or password"},
+                headers={
+                    "Access-Control-Allow-Origin": "http://localhost:3000",
+                    "Access-Control-Allow-Credentials": "true",
+                    "WWW-Authenticate": "Bearer"
+                }
             )
+        
+        access_token = create_access_token(data={"sub": user.username})
+        return JSONResponse(
+            content={"access_token": access_token, "token_type": "bearer"},
+            headers={
+                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Credentials": "true"
+            }
         )
-        conn.commit()
-        return {"message": "Lesson created successfully"}
     except Exception as e:
-        print(f"Error creating lesson: {str(e)}")  # Для отладки
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e)
+        print(f"Error during login: {str(e)}")  # Добавляем логирование
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e)},
+            headers={
+                "Access-Control-Allow-Origin": "http://localhost:3000",
+                "Access-Control-Allow-Credentials": "true"
+            }
         )
 
-@app.get("/api/lessons")
-async def get_lessons():
-    loop = asyncio.get_event_loop()
-    conn = get_db_connection()
-    c = conn.cursor()
-    
-    lessons = await loop.run_in_executor(
-        db_pool,
-        lambda: c.execute('''
-            SELECT id, title, start_time, end_time, student_name, notes 
-            FROM lessons 
-            ORDER BY start_time
-        ''').fetchall()
+@app.post("/api/lessons", response_model=schemas.Lesson)
+async def create_lesson(
+    lesson: schemas.LessonCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_lesson = models.Lesson(
+        title=lesson.title,
+        start_time=lesson.start_time,
+        end_time=lesson.end_time,
+        student_name=lesson.student_name,
+        notes=lesson.notes,
+        user_id=current_user.id
     )
-    
-    # Преобразуем результаты в список словарей
-    return [
-        {
-            "id": lesson[0],
-            "title": lesson[1],
-            "start_time": lesson[2],
-            "end_time": lesson[3],
-            "student_name": lesson[4],
-            "notes": lesson[5]
-        }
-        for lesson in lessons
-    ]
+    db.add(db_lesson)
+    db.commit()
+    db.refresh(db_lesson)
+    return db_lesson
+
+@app.get("/api/lessons", response_model=List[schemas.Lesson])
+async def get_lessons(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    lessons = db.query(models.Lesson).filter(models.Lesson.user_id == current_user.id).all()
+    return lessons
 
 @app.delete("/api/lessons/{lesson_id}")
-async def delete_lesson(lesson_id: int):
-    loop = asyncio.get_event_loop()
-    conn = get_db_connection()
-    c = conn.cursor()
-    
-    await loop.run_in_executor(
-        db_pool,
-        lambda: c.execute('DELETE FROM lessons WHERE id = ?', (lesson_id,))
-    )
-    conn.commit()
+async def delete_lesson(
+    lesson_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    lesson = db.query(models.Lesson).filter(
+        models.Lesson.id == lesson_id,
+        models.Lesson.user_id == current_user.id
+    ).first()
+    if not lesson:
+        raise HTTPException(status_code=404, detail="Lesson not found")
+    db.delete(lesson)
+    db.commit()
     return {"message": "Lesson deleted successfully"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(
-        app,
-        host="0.0.0.0",
-        port=8000,
-        workers=4,  # Количество рабочих процессов
-        loop="uvloop",  # Использование uvloop для лучшей производительности
-        limit_concurrency=1000,  # Ограничение количества одновременных соединений
-        timeout_keep_alive=30,  # Таймаут для keep-alive соединений
-        access_log=False  # Отключение логов доступа для снижения нагрузки
-    ) 
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
