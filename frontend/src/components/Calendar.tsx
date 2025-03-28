@@ -215,7 +215,7 @@ const Calendar: React.FC = () => {
 
       console.log('Sending lesson data:', lessonData); // Для отладки
 
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/lessons`, lessonData, {
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/lessons`, lessonData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
