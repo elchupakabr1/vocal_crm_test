@@ -94,7 +94,8 @@ def init_db():
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
-            username TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
             hashed_password TEXT NOT NULL
         )
     ''')
@@ -105,7 +106,9 @@ def init_db():
             start_time DATETIME NOT NULL,
             end_time DATETIME NOT NULL,
             student_name TEXT NOT NULL,
-            notes TEXT
+            notes TEXT,
+            user_id INTEGER,
+            FOREIGN KEY (user_id) REFERENCES users(id)
         )
     ''')
     conn.commit()
