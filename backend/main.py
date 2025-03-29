@@ -77,6 +77,7 @@ class Lesson(BaseModel):
     end_time: str
     student_name: str
     notes: Optional[str] = None
+    student_id: Optional[int] = None
 
     class Config:
         json_schema_extra = {
@@ -85,7 +86,8 @@ class Lesson(BaseModel):
                 "start_time": "2024-03-28T10:00:00",
                 "end_time": "2024-03-28T11:00:00",
                 "student_name": "Иван Иванов",
-                "notes": "Повторение гамм"
+                "notes": "Повторение гамм",
+                "student_id": 1
             }
         }
 
@@ -205,15 +207,33 @@ async def create_lesson(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    # Проверяем существование ученика
+    student = db.query(models.Student).filter(
+        models.Student.id == lesson.student_id,
+        models.Student.user_id == current_user.id
+    ).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Проверяем наличие оставшихся занятий
+    if student.remaining_lessons <= 0:
+        raise HTTPException(status_code=400, detail="No remaining lessons")
+    
+    # Создаем занятие
     db_lesson = models.Lesson(
         title=lesson.title,
         start_time=lesson.start_time,
         end_time=lesson.end_time,
         student_name=lesson.student_name,
         notes=lesson.notes,
+        student_id=lesson.student_id,
         user_id=current_user.id
     )
     db.add(db_lesson)
+    
+    # Обновляем количество оставшихся занятий
+    student.remaining_lessons -= 1
+    
     db.commit()
     db.refresh(db_lesson)
     return db_lesson
@@ -238,6 +258,15 @@ async def delete_lesson(
     ).first()
     if not lesson:
         raise HTTPException(status_code=404, detail="Lesson not found")
+    
+    # Возвращаем занятие в счетчик ученика
+    student = db.query(models.Student).filter(
+        models.Student.id == lesson.student_id,
+        models.Student.user_id == current_user.id
+    ).first()
+    if student:
+        student.remaining_lessons += 1
+    
     db.delete(lesson)
     db.commit()
     return {"message": "Lesson deleted successfully"}
@@ -315,33 +344,6 @@ async def delete_student(
     db.delete(db_student)
     db.commit()
     return {"message": "Student deleted successfully"}
-
-@app.post("/lessons/", response_model=schemas.Lesson)
-def create_lesson(lesson: schemas.LessonCreate, db: Session = Depends(get_db)):
-    # Проверяем существование ученика
-    student = db.query(models.Student).filter(models.Student.id == lesson.student_id).first()
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-    
-    # Проверяем наличие оставшихся занятий
-    if student.remaining_lessons <= 0:
-        raise HTTPException(status_code=400, detail="No remaining lessons")
-    
-    # Создаем занятие
-    db_lesson = models.Lesson(**lesson.dict())
-    db.add(db_lesson)
-    
-    # Обновляем количество оставшихся занятий
-    student.remaining_lessons -= 1
-    
-    db.commit()
-    db.refresh(db_lesson)
-    return db_lesson
-
-@app.get("/lessons/", response_model=List[schemas.Lesson])
-def read_lessons(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    lessons = db.query(models.Lesson).offset(skip).limit(limit).all()
-    return lessons
 
 if __name__ == "__main__":
     import uvicorn
