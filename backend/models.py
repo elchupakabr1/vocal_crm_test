@@ -1,6 +1,13 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
-from .database import Base
+from database import Base
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
 
 class Student(Base):
     __tablename__ = "students"
@@ -20,6 +27,6 @@ class Lesson(Base):
     id = Column(Integer, primary_key=True, index=True)
     student_id = Column(Integer, ForeignKey("students.id"))
     date = Column(DateTime)
-    duration = Column(Integer)  # в минутах
+    duration = Column(Integer)
     
     student = relationship("Student", back_populates="lessons")
