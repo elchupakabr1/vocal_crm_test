@@ -35,7 +35,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
+    expose_headers=["*"],
+    max_age=3600
 )
 
 # Добавляем сжатие ответов
@@ -241,29 +242,53 @@ async def delete_lesson(
     db.commit()
     return {"message": "Lesson deleted successfully"}
 
-@app.post("/students/", response_model=schemas.Student)
-def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
-    db_student = models.Student(**student.dict())
+@app.post("/api/students/", response_model=schemas.Student)
+async def create_student(
+    student: schemas.StudentCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_student = models.Student(**student.dict(), user_id=current_user.id)
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
     return db_student
 
-@app.get("/students/", response_model=List[schemas.Student])
-def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    students = db.query(models.Student).offset(skip).limit(limit).all()
+@app.get("/api/students/", response_model=List[schemas.Student])
+async def read_students(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    students = db.query(models.Student).filter(models.Student.user_id == current_user.id).offset(skip).limit(limit).all()
     return students
 
-@app.get("/students/{student_id}", response_model=schemas.Student)
-def read_student(student_id: int, db: Session = Depends(get_db)):
-    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+@app.get("/api/students/{student_id}", response_model=schemas.Student)
+async def read_student(
+    student_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_student = db.query(models.Student).filter(
+        models.Student.id == student_id,
+        models.Student.user_id == current_user.id
+    ).first()
     if db_student is None:
         raise HTTPException(status_code=404, detail="Student not found")
     return db_student
 
-@app.put("/students/{student_id}", response_model=schemas.Student)
-def update_student(student_id: int, student: schemas.StudentCreate, db: Session = Depends(get_db)):
-    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+@app.put("/api/students/{student_id}", response_model=schemas.Student)
+async def update_student(
+    student_id: int,
+    student: schemas.StudentCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_student = db.query(models.Student).filter(
+        models.Student.id == student_id,
+        models.Student.user_id == current_user.id
+    ).first()
     if db_student is None:
         raise HTTPException(status_code=404, detail="Student not found")
     
@@ -274,9 +299,16 @@ def update_student(student_id: int, student: schemas.StudentCreate, db: Session 
     db.refresh(db_student)
     return db_student
 
-@app.delete("/students/{student_id}")
-def delete_student(student_id: int, db: Session = Depends(get_db)):
-    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+@app.delete("/api/students/{student_id}")
+async def delete_student(
+    student_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_student = db.query(models.Student).filter(
+        models.Student.id == student_id,
+        models.Student.user_id == current_user.id
+    ).first()
     if db_student is None:
         raise HTTPException(status_code=404, detail="Student not found")
     
