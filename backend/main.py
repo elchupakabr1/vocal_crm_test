@@ -42,6 +42,14 @@ app.add_middleware(
 # Добавляем сжатие ответов
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
+# Функция для добавления CORS заголовков
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "http://213.226.124.30:3000"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    return response
+
 # Настройки безопасности
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key")
 ALGORITHM = "HS256"
@@ -201,50 +209,24 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
             }
         )
 
-@app.post("/api/lessons", response_model=schemas.Lesson)
-async def create_lesson(
-    lesson: schemas.LessonCreate,
-    current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    # Проверяем существование ученика
-    student = db.query(models.Student).filter(
-        models.Student.id == lesson.student_id,
-        models.Student.user_id == current_user.id
-    ).first()
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-    
-    # Проверяем наличие оставшихся занятий
-    if student.remaining_lessons <= 0:
-        raise HTTPException(status_code=400, detail="No remaining lessons")
-    
-    # Создаем занятие
-    db_lesson = models.Lesson(
-        title=lesson.title,
-        start_time=lesson.start_time,
-        end_time=lesson.end_time,
-        student_name=lesson.student_name,
-        notes=lesson.notes,
-        student_id=lesson.student_id,
-        user_id=current_user.id
-    )
-    db.add(db_lesson)
-    
-    # Обновляем количество оставшихся занятий
-    student.remaining_lessons -= 1
-    
-    db.commit()
-    db.refresh(db_lesson)
-    return db_lesson
+@app.options("/api/lessons")
+async def options_lessons():
+    return add_cors_headers(JSONResponse(content={}))
 
 @app.get("/api/lessons", response_model=List[schemas.Lesson])
 async def get_lessons(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    lessons = db.query(models.Lesson).filter(models.Lesson.user_id == current_user.id).all()
-    return lessons
+    try:
+        lessons = db.query(models.Lesson).filter(models.Lesson.user_id == current_user.id).all()
+        return add_cors_headers(JSONResponse(content=jsonable_encoder(lessons)))
+    except Exception as e:
+        print(f"Error fetching lessons: {str(e)}")
+        return add_cors_headers(JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        ))
 
 @app.delete("/api/lessons/{lesson_id}")
 async def delete_lesson(
@@ -271,6 +253,10 @@ async def delete_lesson(
     db.commit()
     return {"message": "Lesson deleted successfully"}
 
+@app.options("/api/students/")
+async def options_students():
+    return add_cors_headers(JSONResponse(content={}))
+
 @app.post("/api/students/", response_model=schemas.Student)
 async def create_student(
     student: schemas.StudentCreate,
@@ -290,8 +276,15 @@ async def read_students(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    students = db.query(models.Student).filter(models.Student.user_id == current_user.id).offset(skip).limit(limit).all()
-    return students
+    try:
+        students = db.query(models.Student).filter(models.Student.user_id == current_user.id).offset(skip).limit(limit).all()
+        return add_cors_headers(JSONResponse(content=jsonable_encoder(students)))
+    except Exception as e:
+        print(f"Error fetching students: {str(e)}")
+        return add_cors_headers(JSONResponse(
+            status_code=500,
+            content={"detail": str(e)}
+        ))
 
 @app.get("/api/students/{student_id}", response_model=schemas.Student)
 async def read_student(
