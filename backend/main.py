@@ -48,7 +48,7 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 
 # Создаем пул потоков для операций с БД
 db_pool = ThreadPoolExecutor(max_workers=4)
@@ -154,7 +154,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
-@app.options("/token")
+@app.options("/api/token")
 async def options_token():
     return JSONResponse(
         content={},
@@ -167,7 +167,7 @@ async def options_token():
         }
     )
 
-@app.post("/token")
+@app.post("/api/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     try:
         user = db.query(models.User).filter(models.User.username == form_data.username).first()
