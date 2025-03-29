@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -33,7 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/token`, formData, {
+      const response = await api.post('/api/token', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
