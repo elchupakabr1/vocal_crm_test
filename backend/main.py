@@ -31,7 +31,7 @@ app = FastAPI()
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000", "http://213.226.124.30", "http://213.226.124.30:3000", "http://213.226.124.30:8000"],
+    allow_origins=["http://localhost:3000", "http://localhost:8000", "http://213.226.124.30", "http://213.226.124.30:3000", "http://213.226.124.30:8000", "http://213.226.124.30/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -337,6 +337,20 @@ async def delete_student(
     db.delete(db_student)
     db.commit()
     return {"message": "Student deleted successfully"}
+
+@app.get("/")
+async def root():
+    return add_cors_headers(JSONResponse(
+        content={
+            "message": "Vocal CRM API",
+            "version": "1.0.0",
+            "status": "running"
+        }
+    ))
+
+@app.options("/")
+async def options_root():
+    return add_cors_headers(JSONResponse(content={}))
 
 if __name__ == "__main__":
     import uvicorn
