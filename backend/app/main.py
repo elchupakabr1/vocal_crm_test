@@ -112,12 +112,14 @@ async def change_password(
     return {"message": "Password updated successfully"}
 
 @app.post("/students/", response_model=schemas.Student)
-def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
+def create_student(student: schemas.StudentCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         logger.info(f"Received student data: {student.dict()}")
         logger.info(f"Data types: first_name={type(student.first_name)}, last_name={type(student.last_name)}, phone={type(student.phone)}, total_lessons={type(student.total_lessons)}, remaining_lessons={type(student.remaining_lessons)}")
         
-        db_student = models.Student(**student.dict())
+        student_data = student.dict()
+        student_data["user_id"] = current_user.id
+        db_student = models.Student(**student_data)
         logger.info("Created student model")
         db.add(db_student)
         logger.info("Added student to session")
@@ -134,9 +136,9 @@ def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/students/", response_model=List[schemas.Student])
-def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_students(skip: int = 0, limit: int = 100, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        students = db.query(models.Student).offset(skip).limit(limit).all()
+        students = db.query(models.Student).filter(models.Student.user_id == current_user.id).offset(skip).limit(limit).all()
         return students
     except Exception as e:
         logger.error(f"Error fetching students: {str(e)}")
@@ -187,10 +189,13 @@ def delete_student(student_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/lessons/", response_model=schemas.Lesson)
-def create_lesson(lesson: schemas.LessonCreate, db: Session = Depends(get_db)):
+def create_lesson(lesson: schemas.LessonCreate, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
         # Проверяем существование ученика
-        student = db.query(models.Student).filter(models.Student.id == lesson.student_id).first()
+        student = db.query(models.Student).filter(
+            models.Student.id == lesson.student_id,
+            models.Student.user_id == current_user.id
+        ).first()
         if not student:
             raise HTTPException(status_code=404, detail="Student not found")
         
@@ -199,7 +204,9 @@ def create_lesson(lesson: schemas.LessonCreate, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="No remaining lessons")
         
         # Создаем занятие
-        db_lesson = models.Lesson(**lesson.dict())
+        lesson_data = lesson.dict()
+        lesson_data["user_id"] = current_user.id
+        db_lesson = models.Lesson(**lesson_data)
         db.add(db_lesson)
         
         # Обновляем количество оставшихся занятий
@@ -214,9 +221,9 @@ def create_lesson(lesson: schemas.LessonCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/lessons/", response_model=List[schemas.Lesson])
-def read_lessons(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_lessons(skip: int = 0, limit: int = 100, current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        lessons = db.query(models.Lesson).offset(skip).limit(limit).all()
+        lessons = db.query(models.Lesson).filter(models.Lesson.user_id == current_user.id).offset(skip).limit(limit).all()
         return lessons
     except Exception as e:
         logger.error(f"Error fetching lessons: {str(e)}")

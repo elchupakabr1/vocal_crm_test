@@ -23,6 +23,7 @@ class StudentBase(BaseModel):
     phone: str
     total_lessons: int
     remaining_lessons: int
+    user_id: Optional[int] = None
 
 class StudentCreate(StudentBase):
     pass
@@ -40,6 +41,7 @@ class LessonBase(BaseModel):
     date: datetime
     duration: int = 60
     is_completed: bool = False
+    user_id: Optional[int] = None
 
 class LessonCreate(LessonBase):
     pass

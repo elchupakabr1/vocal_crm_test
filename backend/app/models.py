@@ -21,8 +21,10 @@ class Student(Base):
     total_lessons = Column(Integer, nullable=False, default=0)
     remaining_lessons = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"))
     
     lessons = relationship("Lesson", back_populates="student")
+    user = relationship("User", back_populates="students")
 
 class Lesson(Base):
     __tablename__ = "lessons"
@@ -33,8 +35,10 @@ class Lesson(Base):
     duration = Column(Integer, nullable=False, default=60)  # в минутах
     is_completed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"))
     
     student = relationship("Student", back_populates="lessons")
+    user = relationship("User", back_populates="lessons")
 
 class User(Base):
     __tablename__ = "users"
@@ -44,4 +48,8 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
-    is_admin = Column(Boolean, default=False) 
+    is_admin = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    students = relationship("Student", back_populates="user")
+    lessons = relationship("Lesson", back_populates="user") 
