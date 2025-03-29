@@ -25,6 +25,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (token) {
       setIsAuthenticated(true);
     }
+    // Отладочный вывод
+    console.log('API URL:', process.env.REACT_APP_API_URL);
+    console.log('API Base URL:', api.defaults.baseURL);
   }, []);
 
   const login = async (username: string, password: string) => {
@@ -33,7 +36,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       formData.append('username', username);
       formData.append('password', password);
 
-      const response = await api.post('/api/token', formData, {
+      // Отладочный вывод
+      console.log('Sending request to:', `${api.defaults.baseURL}/token`);
+
+      const response = await api.post('/token', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
@@ -43,6 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('token', access_token);
       setIsAuthenticated(true);
     } catch (error) {
+      console.error('Login error:', error);
       throw new Error('Authentication failed');
     }
   };
