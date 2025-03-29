@@ -25,8 +25,12 @@ class Lesson(Base):
     __tablename__ = "lessons"
 
     id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, index=True)
+    start_time = Column(DateTime)
+    end_time = Column(DateTime)
+    student_name = Column(String)
+    notes = Column(String, nullable=True)
     student_id = Column(Integer, ForeignKey("students.id"))
-    date = Column(DateTime)
-    duration = Column(Integer)
+    user_id = Column(Integer, ForeignKey("users.id"))
     
     student = relationship("Student", back_populates="lessons")

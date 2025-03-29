@@ -91,31 +91,6 @@ class Lesson(BaseModel):
             }
         }
 
-# Функции для работы с базой данных
-def init_db():
-    conn = get_db_connection()
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            hashed_password TEXT NOT NULL
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS lessons (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            start_time DATETIME NOT NULL,
-            end_time DATETIME NOT NULL,
-            student_name TEXT NOT NULL,
-            notes TEXT,
-            user_id INTEGER,
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        )
-    ''')
-    conn.commit()
-
 # Функции для работы с токенами
 def create_access_token(data: dict):
     to_encode = data.copy()
@@ -123,9 +98,6 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
-
-# Инициализация базы данных
-init_db()
 
 # Dependency
 def get_db():
