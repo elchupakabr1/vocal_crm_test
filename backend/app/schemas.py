@@ -56,4 +56,20 @@ class Lesson(LessonBase):
 
 class PasswordChange(BaseModel):
     current_password: str
-    new_password: str 
+    new_password: str
+
+class UserBase(BaseModel):
+    username: str
+    email: str
+    is_admin: bool = False
+
+class UserCreate(UserBase):
+    password: str
+
+class User(UserBase):
+    id: int
+    is_active: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True 

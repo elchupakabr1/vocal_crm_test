@@ -405,4 +405,40 @@ async def export_database(current_user: models.User = Depends(get_current_user))
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"} 
+    return {"status": "ok"}
+
+@app.post("/api/users/", response_model=schemas.User)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    try:
+        # Проверяем, существует ли пользователь с таким username
+        db_user = db.query(models.User).filter(models.User.username == user.username).first()
+        if db_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already registered"
+            )
+        
+        # Проверяем, существует ли пользователь с таким email
+        db_user = db.query(models.User).filter(models.User.email == user.email).first()
+        if db_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email already registered"
+            )
+        
+        # Создаем нового пользователя
+        hashed_password = get_password_hash(user.password)
+        db_user = models.User(
+            username=user.username,
+            email=user.email,
+            hashed_password=hashed_password,
+            is_admin=user.is_admin
+        )
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    except Exception as e:
+        logger.error(f"Error creating user: {str(e)}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e)) 
