@@ -30,12 +30,7 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 # Настройка CORS
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://213.226.124.30:3000",
-    "http://213.226.124.30",
-]
+origins = ["*"]  # Разрешаем все источники в режиме разработки
 
 app.add_middleware(
     CORSMiddleware,
