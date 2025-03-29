@@ -5,6 +5,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import Login from './components/Login';
 import Calendar from './components/Calendar';
 import Settings from './components/Settings';
+import Students from './pages/Students';
+import Subscriptions from './pages/Subscriptions';
 import Layout from './components/Layout';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
@@ -42,6 +44,8 @@ function App() {
               }
             >
               <Route index element={<Calendar />} />
+              <Route path="students" element={<Students />} />
+              <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="settings" element={<Settings />} />
             </Route>
           </Routes>

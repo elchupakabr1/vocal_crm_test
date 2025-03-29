@@ -241,6 +241,76 @@ async def delete_lesson(
     db.commit()
     return {"message": "Lesson deleted successfully"}
 
+@app.post("/students/", response_model=schemas.Student)
+def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
+    db_student = models.Student(**student.dict())
+    db.add(db_student)
+    db.commit()
+    db.refresh(db_student)
+    return db_student
+
+@app.get("/students/", response_model=List[schemas.Student])
+def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    students = db.query(models.Student).offset(skip).limit(limit).all()
+    return students
+
+@app.get("/students/{student_id}", response_model=schemas.Student)
+def read_student(student_id: int, db: Session = Depends(get_db)):
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if db_student is None:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return db_student
+
+@app.put("/students/{student_id}", response_model=schemas.Student)
+def update_student(student_id: int, student: schemas.StudentCreate, db: Session = Depends(get_db)):
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if db_student is None:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    for key, value in student.dict().items():
+        setattr(db_student, key, value)
+    
+    db.commit()
+    db.refresh(db_student)
+    return db_student
+
+@app.delete("/students/{student_id}")
+def delete_student(student_id: int, db: Session = Depends(get_db)):
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if db_student is None:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    db.delete(db_student)
+    db.commit()
+    return {"message": "Student deleted successfully"}
+
+@app.post("/lessons/", response_model=schemas.Lesson)
+def create_lesson(lesson: schemas.LessonCreate, db: Session = Depends(get_db)):
+    # Проверяем существование ученика
+    student = db.query(models.Student).filter(models.Student.id == lesson.student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Проверяем наличие оставшихся занятий
+    if student.remaining_lessons <= 0:
+        raise HTTPException(status_code=400, detail="No remaining lessons")
+    
+    # Создаем занятие
+    db_lesson = models.Lesson(**lesson.dict())
+    db.add(db_lesson)
+    
+    # Обновляем количество оставшихся занятий
+    student.remaining_lessons -= 1
+    
+    db.commit()
+    db.refresh(db_lesson)
+    return db_lesson
+
+@app.get("/lessons/", response_model=List[schemas.Lesson])
+def read_lessons(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    lessons = db.query(models.Lesson).offset(skip).limit(limit).all()
+    return lessons
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000) 

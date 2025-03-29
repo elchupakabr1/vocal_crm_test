@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 class Token(BaseModel):
@@ -21,19 +21,33 @@ class User(UserBase):
     class Config:
         from_attributes = True
 
+class StudentBase(BaseModel):
+    first_name: str
+    last_name: str
+    phone: str
+    total_lessons: int = 0
+    remaining_lessons: int = 0
+
+class StudentCreate(StudentBase):
+    pass
+
+class Student(StudentBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
 class LessonBase(BaseModel):
-    title: str
-    start_time: datetime
-    end_time: datetime
-    student_name: str
-    notes: Optional[str] = None
+    date: datetime
+    duration: int
+    student_id: int
 
 class LessonCreate(LessonBase):
     pass
 
 class Lesson(LessonBase):
     id: int
-    user_id: int
+    student: Student
 
     class Config:
         from_attributes = True 

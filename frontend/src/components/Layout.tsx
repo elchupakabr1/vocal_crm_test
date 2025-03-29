@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, Link } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -18,6 +18,8 @@ import {
   CalendarMonth as CalendarIcon,
   Settings as SettingsIcon,
   Logout as LogoutIcon,
+  People as PeopleIcon,
+  CardMembership as CardMembershipIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -39,6 +41,8 @@ const Layout: React.FC = () => {
 
   const menuItems = [
     { text: 'Календарь', icon: <CalendarIcon />, path: '/' },
+    { text: 'Ученики', icon: <PeopleIcon />, path: '/students' },
+    { text: 'Абонементы', icon: <CardMembershipIcon />, path: '/subscriptions' },
     { text: 'Настройки', icon: <SettingsIcon />, path: '/settings' },
   ];
 
