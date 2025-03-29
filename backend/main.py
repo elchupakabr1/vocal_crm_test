@@ -31,7 +31,7 @@ app = FastAPI()
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешаем все источники в режиме разработки
+    allow_origins=["http://213.226.124.30:3000", "http://213.226.124.30:8000", "http://213.226.124.30"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
