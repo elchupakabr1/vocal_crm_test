@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
+import axios from 'axios';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -37,19 +38,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       formData.append('password', password);
 
       // Отладочный вывод
-      console.log('Sending request to:', `${api.defaults.baseURL}/api/token`);
+      console.log('API URL:', process.env.REACT_APP_API_URL);
+      console.log('API Base URL:', api.defaults.baseURL);
+      console.log('Sending request to:', `${api.defaults.baseURL}/token`);
 
-      const response = await api.post('/api/token', formData, {
+      const response = await api.post('/token', formData, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
       
+      console.log('Response:', response.data);
       const { access_token } = response.data;
       localStorage.setItem('token', access_token);
       setIsAuthenticated(true);
     } catch (error) {
       console.error('Login error:', error);
+      if (axios.isAxiosError(error)) {
+        console.error('Axios error details:', {
+          message: error.message,
+          config: error.config,
+          response: error.response,
+        });
+      }
       throw new Error('Authentication failed');
     }
   };

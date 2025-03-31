@@ -1,6 +1,11 @@
-from app.database import SessionLocal
-from app.models import User
-from app.security import get_password_hash
+from database import SessionLocal
+from models import User
+from passlib.context import CryptContext
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def get_password_hash(password: str):
+    return pwd_context.hash(password)
 
 def create_admin_user():
     db = SessionLocal()
@@ -14,10 +19,7 @@ def create_admin_user():
         # Создаем нового администратора
         admin_user = User(
             username="admin",
-            email="admin@example.com",
-            hashed_password=get_password_hash("admin123"),
-            is_admin=True,
-            is_active=True
+            hashed_password=get_password_hash("admin123")
         )
         db.add(admin_user)
         db.commit()

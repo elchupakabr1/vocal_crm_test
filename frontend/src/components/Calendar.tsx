@@ -144,7 +144,7 @@ const Calendar: React.FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.get('http://213.226.124.30:8000/api/students/', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/students/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -177,7 +177,7 @@ const Calendar: React.FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.get('http://213.226.124.30:8000/api/lessons/', {
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/lessons/`, {
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -261,7 +261,7 @@ const Calendar: React.FC = () => {
       combinedDate.setHours(selectedTime.getHours());
       combinedDate.setMinutes(selectedTime.getMinutes());
 
-      const response = await axios.post<Lesson>('http://213.226.124.30:8000/api/lessons/', {
+      const response = await axios.post<Lesson>(`${process.env.REACT_APP_API_URL}/lessons/`, {
         student_id: selectedStudent.id,
         date: combinedDate,
         duration: parseInt(duration),
@@ -521,7 +521,7 @@ const Calendar: React.FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.delete(`http://213.226.124.30:8000/api/lessons/${lessonId}`, {
+      const response = await axios.delete(`${process.env.REACT_APP_API_URL}/lessons/${lessonId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -556,7 +556,7 @@ const Calendar: React.FC = () => {
         duration: editingLesson.duration,
       };
 
-      await axios.put(`http://213.226.124.30:8000/api/lessons/${editingLesson.id}`, lessonData, {
+      await axios.put(`${process.env.REACT_APP_API_URL}/lessons/${editingLesson.id}`, lessonData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -590,7 +590,7 @@ const Calendar: React.FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.put(`http://213.226.124.30:8000/api/lessons/${selectedLesson.id}/complete`, {}, {
+      const response = await axios.put(`${process.env.REACT_APP_API_URL}/lessons/${selectedLesson.id}/complete`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

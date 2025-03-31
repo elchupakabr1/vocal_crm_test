@@ -40,7 +40,7 @@ const Settings: React.FC = () => {
       }
 
       const response = await axios.post(
-        'http://213.226.124.30:8000/api/users/change-password',
+        `${process.env.REACT_APP_API_URL}/users/change-password`,
         {
           current_password: password,
           new_password: newPassword,
@@ -73,7 +73,7 @@ const Settings: React.FC = () => {
       }
 
       const response = await axios.get(
-        'http://213.226.124.30:8000/api/database/export',
+        `${process.env.REACT_APP_API_URL}/database/export`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -112,7 +112,7 @@ const Settings: React.FC = () => {
       formData.append('file', file);
 
       const response = await axios.post(
-        'http://213.226.124.30:8000/api/database/import',
+        `${process.env.REACT_APP_API_URL}/database/import`,
         formData,
         {
           headers: {

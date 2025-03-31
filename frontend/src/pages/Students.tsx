@@ -75,7 +75,7 @@ const Students: React.FC = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch('http://localhost:8000/students/');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/students/`);
       if (!response.ok) throw new Error('Failed to fetch students');
       const data = await response.json();
       setStudents(Array.isArray(data) ? data : []);
@@ -87,7 +87,7 @@ const Students: React.FC = () => {
 
   const fetchSubscriptions = async () => {
     try {
-      const response = await fetch('http://localhost:8000/subscriptions/');
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/subscriptions/`);
       if (!response.ok) throw new Error('Failed to fetch subscriptions');
       const data = await response.json();
       setSubscriptions(Array.isArray(data) ? data : []);
@@ -152,7 +152,7 @@ const Students: React.FC = () => {
     event.preventDefault();
     try {
       const selectedSubscription = subscriptions.find(sub => sub.id === parseInt(formData.subscriptionId));
-      const response = await fetch('http://localhost:8000/students/', {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/students/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -189,7 +189,7 @@ const Students: React.FC = () => {
   const handleEditSubmit = async () => {
     if (!selectedStudent) return;
     try {
-      const response = await fetch(`http://localhost:8000/students/${selectedStudent.id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/students/${selectedStudent.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -219,7 +219,7 @@ const Students: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/students/${id}`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/students/${id}`, {
         method: 'DELETE',
       });
 

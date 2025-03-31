@@ -31,8 +31,7 @@ app = FastAPI()
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000", "http://213.226.124.30", "http://213.226.124.30:3000", "http://213.226.124.30:8000"],
-
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -132,7 +131,7 @@ async def options_token():
     return JSONResponse(
         content={},
         headers={
-            "Access-Control-Allow-Origin": "http://213.226.124.30:3000",
+            "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "POST, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
             "Access-Control-Allow-Credentials": "true",
@@ -149,7 +148,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 content={"detail": "Incorrect username or password"},
                 headers={
-                    "Access-Control-Allow-Origin": "http://213.226.124.30:3000",
+                    "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Credentials": "true",
                     "WWW-Authenticate": "Bearer"
                 }
@@ -159,17 +158,17 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         return JSONResponse(
             content={"access_token": access_token, "token_type": "bearer"},
             headers={
-                "Access-Control-Allow-Origin": "http://213.226.124.30:3000",
+                "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Credentials": "true"
             }
         )
     except Exception as e:
-        print(f"Error during login: {str(e)}")  # Добавляем логирование
+        print(f"Error during login: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"detail": str(e)},
             headers={
-                "Access-Control-Allow-Origin": "http://213.226.124.30:3000",
+                "Access-Control-Allow-Origin": "*",
                 "Access-Control-Allow-Credentials": "true"
             }
         )
