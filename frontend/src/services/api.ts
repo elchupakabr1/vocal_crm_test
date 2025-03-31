@@ -3,7 +3,7 @@ import axios from 'axios';
 console.log('API URL from env:', process.env.REACT_APP_API_URL);
 
 const api = axios.create({
-  baseURL: '/api',  // Используем относительный путь
+  baseURL: (process.env.REACT_APP_API_URL || 'http://localhost:8000') + '/api',
   headers: {
     'Content-Type': 'application/json',
   },

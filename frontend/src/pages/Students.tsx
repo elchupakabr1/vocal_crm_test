@@ -29,6 +29,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { SelectChangeEvent } from '@mui/material/Select';
+import api from '@/services/api';
 
 interface Student {
   id: number;
@@ -75,10 +76,8 @@ const Students: React.FC = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/students/`);
-      if (!response.ok) throw new Error('Failed to fetch students');
-      const data = await response.json();
-      setStudents(Array.isArray(data) ? data : []);
+      const response = await api.get('/students/');
+      setStudents(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching students:', error);
       setStudents([]);
@@ -87,10 +86,8 @@ const Students: React.FC = () => {
 
   const fetchSubscriptions = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/subscriptions/`);
-      if (!response.ok) throw new Error('Failed to fetch subscriptions');
-      const data = await response.json();
-      setSubscriptions(Array.isArray(data) ? data : []);
+      const response = await api.get('/subscriptions/');
+      setSubscriptions(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
       setSubscriptions([]);
@@ -121,7 +118,15 @@ const Students: React.FC = () => {
   });
 
   const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
+  const handleClose = () => {
+    setOpen(false);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      phone: '',
+      subscriptionId: '',
+    });
+  };
 
   const handleOpenStudentCard = (student: Student) => {
     setSelectedStudent(student);
@@ -152,27 +157,15 @@ const Students: React.FC = () => {
     event.preventDefault();
     try {
       const selectedSubscription = subscriptions.find(sub => sub.id === parseInt(formData.subscriptionId));
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/students/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone,
-          total_lessons: selectedSubscription ? selectedSubscription.lessons_count : 0,
-          remaining_lessons: selectedSubscription ? selectedSubscription.lessons_count : 0
-        }),
+      const response = await api.post('/students/', {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        phone: formData.phone,
+        total_lessons: selectedSubscription ? selectedSubscription.lessons_count : 0,
+        remaining_lessons: selectedSubscription ? selectedSubscription.lessons_count : 0
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(JSON.stringify(errorData));
-      }
-
-      const data = await response.json();
-      setStudents([...students, data]);
+      setStudents([...students, response.data]);
       handleClose();
       setFormData({
         firstName: '',
@@ -189,28 +182,16 @@ const Students: React.FC = () => {
   const handleEditSubmit = async () => {
     if (!selectedStudent) return;
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/students/${selectedStudent.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          first_name: selectedStudent.first_name,
-          last_name: selectedStudent.last_name,
-          phone: selectedStudent.phone,
-          total_lessons: selectedStudent.total_lessons,
-          remaining_lessons: selectedStudent.remaining_lessons
-        }),
+      const response = await api.put(`/students/${selectedStudent.id}`, {
+        first_name: selectedStudent.first_name,
+        last_name: selectedStudent.last_name,
+        phone: selectedStudent.phone,
+        total_lessons: selectedStudent.total_lessons,
+        remaining_lessons: selectedStudent.remaining_lessons
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to update student');
-      }
-
       await fetchStudents();
-      setOpenStudentCard(false);
-      setSelectedStudent(null);
+      handleCloseStudentCard();
     } catch (error) {
       console.error('Error updating student:', error);
       alert('Ошибка при обновлении студента');
@@ -218,19 +199,15 @@ const Students: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этого студента?')) {
+      return;
+    }
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/students/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to delete student');
-      }
-
+      await api.delete(`/students/${id}`);
       await fetchStudents();
     } catch (error) {
       console.error('Error deleting student:', error);
+      alert('Ошибка при удалении студента');
     }
   };
 

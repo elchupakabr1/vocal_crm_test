@@ -20,6 +20,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import api from '@/services/api';
 
 interface Subscription {
   id: number;
@@ -45,10 +46,8 @@ const Subscriptions: React.FC = () => {
 
   const fetchSubscriptions = async () => {
     try {
-      const response = await fetch('http://localhost:8000/subscriptions/');
-      if (!response.ok) throw new Error('Failed to fetch subscriptions');
-      const data = await response.json();
-      setSubscriptions(Array.isArray(data) ? data : []);
+      const response = await api.get('/subscriptions/');
+      setSubscriptions(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
       setSubscriptions([]);
@@ -70,19 +69,7 @@ const Subscriptions: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch('http://localhost:8000/subscriptions/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newSubscription),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to create subscription');
-      }
-
+      const response = await api.post('/subscriptions/', newSubscription);
       await fetchSubscriptions();
       handleClose();
       setNewSubscription({
@@ -99,19 +86,7 @@ const Subscriptions: React.FC = () => {
     if (!selectedSubscription) return;
 
     try {
-      const response = await fetch(`http://localhost:8000/subscriptions/${selectedSubscription.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(selectedSubscription),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to update subscription');
-      }
-
+      const response = await api.put(`/subscriptions/${selectedSubscription.id}`, selectedSubscription);
       await fetchSubscriptions();
       handleCloseEdit();
     } catch (error) {
@@ -121,15 +96,7 @@ const Subscriptions: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`http://localhost:8000/subscriptions/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to delete subscription');
-      }
-
+      const response = await api.delete(`/subscriptions/${id}`);
       await fetchSubscriptions();
     } catch (error) {
       console.error('Error deleting subscription:', error);

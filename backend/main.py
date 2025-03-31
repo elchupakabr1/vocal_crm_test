@@ -31,7 +31,7 @@ app = FastAPI()
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],  # Разрешаем только фронтенд
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,22 +72,20 @@ class User(BaseModel):
 
 class Lesson(BaseModel):
     id: Optional[int] = None
-    title: str
-    start_time: str
-    end_time: str
-    student_name: str
+    date: datetime
+    duration: int
+    student_id: int
+    is_completed: bool = False
     notes: Optional[str] = None
-    student_id: Optional[int] = None
 
     class Config:
         json_schema_extra = {
             "example": {
-                "title": "Урок вокала",
-                "start_time": "2024-03-28T10:00:00",
-                "end_time": "2024-03-28T11:00:00",
-                "student_name": "Иван Иванов",
-                "notes": "Повторение гамм",
-                "student_id": 1
+                "date": "2024-03-28T10:00:00",
+                "duration": 60,
+                "student_id": 1,
+                "is_completed": False,
+                "notes": "Повторение гамм"
             }
         }
 
@@ -126,13 +124,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
-@app.options("/api/token")
-async def options_token():
+# Добавляем обработку OPTIONS запросов для всех эндпоинтов
+@app.options("/api/{path:path}")
+async def options_handler(path: str):
     return JSONResponse(
         content={},
         headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
+            "Access-Control-Allow-Origin": "http://localhost:3000",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
             "Access-Control-Allow-Headers": "Content-Type, Authorization",
             "Access-Control-Allow-Credentials": "true",
             "Access-Control-Max-Age": "3600",
@@ -141,39 +140,21 @@ async def options_token():
 
 @app.post("/api/token")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    try:
-        user = db.query(models.User).filter(models.User.username == form_data.username).first()
-        if not user or not pwd_context.verify(form_data.password, user.hashed_password):
-            return JSONResponse(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                content={"detail": "Incorrect username or password"},
-                headers={
-                    "Access-Control-Allow-Origin": "*",
-                    "Access-Control-Allow-Credentials": "true",
-                    "WWW-Authenticate": "Bearer"
-                }
-            )
-        
-        access_token = create_access_token(data={"sub": user.username})
-        return JSONResponse(
-            content={"access_token": access_token, "token_type": "bearer"},
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Credentials": "true"
-            }
+    user = db.query(models.User).filter(models.User.username == form_data.username).first()
+    if not user or not pwd_context.verify(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"}
         )
-    except Exception as e:
-        print(f"Error during login: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e)},
-            headers={
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Credentials": "true"
-            }
-        )
+    
+    access_token = create_access_token(data={"sub": user.username})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
-@app.post("/api/lessons", response_model=schemas.Lesson)
+@app.post("/api/lessons/", response_model=schemas.Lesson)
 async def create_lesson(
     lesson: schemas.LessonCreate,
     current_user: models.User = Depends(get_current_user),
@@ -193,12 +174,10 @@ async def create_lesson(
     
     # Создаем занятие
     db_lesson = models.Lesson(
-        title=lesson.title,
-        start_time=lesson.start_time,
-        end_time=lesson.end_time,
-        student_name=lesson.student_name,
-        notes=lesson.notes,
+        date=lesson.date,
+        duration=lesson.duration,
         student_id=lesson.student_id,
+        is_completed=False,
         user_id=current_user.id
     )
     db.add(db_lesson)
@@ -210,7 +189,7 @@ async def create_lesson(
     db.refresh(db_lesson)
     return db_lesson
 
-@app.get("/api/lessons", response_model=List[schemas.Lesson])
+@app.get("/api/lessons/", response_model=List[schemas.Lesson])
 async def get_lessons(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -218,7 +197,7 @@ async def get_lessons(
     lessons = db.query(models.Lesson).filter(models.Lesson.user_id == current_user.id).all()
     return lessons
 
-@app.delete("/api/lessons/{lesson_id}")
+@app.delete("/api/lessons/{lesson_id}/")
 async def delete_lesson(
     lesson_id: int,
     current_user: models.User = Depends(get_current_user),
@@ -316,6 +295,82 @@ async def delete_student(
     db.delete(db_student)
     db.commit()
     return {"message": "Student deleted successfully"}
+
+@app.post("/api/subscriptions/", response_model=schemas.Subscription)
+async def create_subscription(
+    subscription: schemas.SubscriptionCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_subscription = models.Subscription(**subscription.dict(), user_id=current_user.id)
+    db.add(db_subscription)
+    db.commit()
+    db.refresh(db_subscription)
+    return db_subscription
+
+@app.get("/api/subscriptions/", response_model=List[schemas.Subscription])
+async def read_subscriptions(
+    skip: int = 0,
+    limit: int = 100,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    subscriptions = db.query(models.Subscription).filter(
+        models.Subscription.user_id == current_user.id
+    ).offset(skip).limit(limit).all()
+    return subscriptions
+
+@app.get("/api/subscriptions/{subscription_id}", response_model=schemas.Subscription)
+async def read_subscription(
+    subscription_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    subscription = db.query(models.Subscription).filter(
+        models.Subscription.id == subscription_id,
+        models.Subscription.user_id == current_user.id
+    ).first()
+    if subscription is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    return subscription
+
+@app.put("/api/subscriptions/{subscription_id}", response_model=schemas.Subscription)
+async def update_subscription(
+    subscription_id: int,
+    subscription: schemas.SubscriptionCreate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_subscription = db.query(models.Subscription).filter(
+        models.Subscription.id == subscription_id,
+        models.Subscription.user_id == current_user.id
+    ).first()
+    if db_subscription is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    
+    for key, value in subscription.dict().items():
+        setattr(db_subscription, key, value)
+    
+    db.commit()
+    db.refresh(db_subscription)
+    return db_subscription
+
+@app.delete("/api/subscriptions/{subscription_id}")
+async def delete_subscription(
+    subscription_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    subscription = db.query(models.Subscription).filter(
+        models.Subscription.id == subscription_id,
+        models.Subscription.user_id == current_user.id
+    ).first()
+    if subscription is None:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    
+    db.delete(subscription)
+    db.commit()
+    return {"message": "Subscription deleted successfully"}
 
 if __name__ == "__main__":
     import uvicorn

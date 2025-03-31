@@ -33,6 +33,7 @@ class StudentCreate(StudentBase):
 
 class Student(StudentBase):
     id: int
+    subscription_id: Optional[int] = None
 
     class Config:
         from_attributes = True
@@ -48,6 +49,20 @@ class LessonCreate(LessonBase):
 class Lesson(LessonBase):
     id: int
     student: Student
+
+    class Config:
+        from_attributes = True
+
+class SubscriptionBase(BaseModel):
+    name: str
+    price: float
+    lessons_count: int
+
+class SubscriptionCreate(SubscriptionBase):
+    pass
+
+class Subscription(SubscriptionBase):
+    id: int
 
     class Config:
         from_attributes = True 

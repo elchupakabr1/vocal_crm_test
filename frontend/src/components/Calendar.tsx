@@ -52,8 +52,8 @@ import {
   setMinutes
 } from 'date-fns';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
-import axios from 'axios';
-import { useAuth } from '../contexts/AuthContext';
+import api from '@/services/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Student {
   id: number;
@@ -139,18 +139,7 @@ const Calendar: React.FC = () => {
   // Функция для загрузки учеников с повторными попытками
   const fetchStudents = useCallback(async (retryCount = 0) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/students/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        timeout: 10000 // 10 секунд таймаут
-      });
-
+      const response = await api.get('/students/');
       if (Array.isArray(response.data)) {
         setStudents(response.data);
       } else {
@@ -172,18 +161,7 @@ const Calendar: React.FC = () => {
   // Функция для загрузки уроков с повторными попытками
   const fetchLessons = useCallback(async (retryCount = 0) => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/lessons/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        timeout: 10000 // 10 секунд таймаут
-      });
-
+      const response = await api.get('/lessons/');
       if (Array.isArray(response.data)) {
         setLessons(response.data);
       } else {
@@ -261,7 +239,7 @@ const Calendar: React.FC = () => {
       combinedDate.setHours(selectedTime.getHours());
       combinedDate.setMinutes(selectedTime.getMinutes());
 
-      const response = await axios.post<Lesson>(`${process.env.REACT_APP_API_URL}/lessons/`, {
+      const response = await api.post('/lessons/', {
         student_id: selectedStudent.id,
         date: combinedDate,
         duration: parseInt(duration),
@@ -521,7 +499,7 @@ const Calendar: React.FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.delete(`${process.env.REACT_APP_API_URL}/lessons/${lessonId}`, {
+      const response = await api.delete(`/lessons/${lessonId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -556,7 +534,7 @@ const Calendar: React.FC = () => {
         duration: editingLesson.duration,
       };
 
-      await axios.put(`${process.env.REACT_APP_API_URL}/lessons/${editingLesson.id}`, lessonData, {
+      await api.put(`/lessons/${editingLesson.id}`, lessonData, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -590,7 +568,7 @@ const Calendar: React.FC = () => {
         throw new Error('No authentication token found');
       }
 
-      const response = await axios.put(`${process.env.REACT_APP_API_URL}/lessons/${selectedLesson.id}/complete`, {}, {
+      const response = await api.put(`/lessons/${selectedLesson.id}/complete`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

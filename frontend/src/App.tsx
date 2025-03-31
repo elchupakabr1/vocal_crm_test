@@ -2,13 +2,13 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import Login from './components/Login';
-import Calendar from './components/Calendar';
-import Settings from './components/Settings';
-import Students from './pages/Students';
-import Subscriptions from './pages/Subscriptions';
-import Layout from './components/Layout';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from '@/components/Login';
+import Calendar from '@/components/Calendar';
+import Settings from '@/components/Settings';
+import Students from '@/pages/Students';
+import Subscriptions from '@/pages/Subscriptions';
+import Layout from '@/components/Layout';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
 const theme = createTheme({
   palette: {
