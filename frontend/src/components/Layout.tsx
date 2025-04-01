@@ -21,6 +21,7 @@ import {
   People as PeopleIcon,
   CardMembership as CardMembershipIcon,
 } from '@mui/icons-material';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { useAuth } from '@/contexts/AuthContext';
 
 const drawerWidth = 240;
@@ -44,6 +45,7 @@ const Layout: React.FC = () => {
     { text: 'Ученики', icon: <PeopleIcon />, path: '/students' },
     { text: 'Абонементы', icon: <CardMembershipIcon />, path: '/subscriptions' },
     { text: 'Настройки', icon: <SettingsIcon />, path: '/settings' },
+    { text: 'Финансы', icon: <AccountBalanceIcon />, path: '/finance' },
   ];
 
   const drawer = (

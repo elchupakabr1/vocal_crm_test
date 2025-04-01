@@ -9,6 +9,7 @@ import Students from '@/pages/Students';
 import Subscriptions from '@/pages/Subscriptions';
 import Layout from '@/components/Layout';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import Finance from '@/components/Finance';
 
 const theme = createTheme({
   palette: {
@@ -47,6 +48,7 @@ function App() {
               <Route path="students" element={<Students />} />
               <Route path="subscriptions" element={<Subscriptions />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="finance" element={<Finance />} />
             </Route>
           </Routes>
         </Router>

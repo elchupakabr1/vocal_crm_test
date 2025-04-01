@@ -22,9 +22,11 @@ class Student(Base):
     remaining_lessons = Column(Integer, nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     user_id = Column(Integer, ForeignKey("users.id"))
+    subscription_id = Column(Integer, ForeignKey("subscriptions.id"), nullable=True)
     
     lessons = relationship("Lesson", back_populates="student")
     user = relationship("User", back_populates="students")
+    subscription = relationship("Subscription", back_populates="students")
 
 class Lesson(Base):
     __tablename__ = "lessons"

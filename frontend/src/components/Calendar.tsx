@@ -136,6 +136,42 @@ const Calendar: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [duration, setDuration] = useState('60');
 
+  const handleDeleteLesson = useCallback(async (lessonId: number) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Находим урок, который будем удалять
+      const lessonToDelete = lessons.find(lesson => lesson.id === lessonId);
+      if (!lessonToDelete) {
+        throw new Error('Lesson not found');
+      }
+
+      const response = await api.delete(`/lessons/${lessonId}/`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 200) {
+        // Обновляем список уроков
+        setLessons(lessons.filter(lesson => lesson.id !== lessonId));
+        
+        // Обновляем количество оставшихся занятий у ученика
+        setStudents(students.map(student => 
+          student.id === lessonToDelete.student_id
+            ? { ...student, remaining_lessons: student.remaining_lessons + 1 }
+            : student
+        ));
+      }
+    } catch (error) {
+      console.error('Error deleting lesson:', error);
+      alert('Ошибка при удалении занятия');
+    }
+  }, [lessons, students]);
+
   // Функция для загрузки учеников с повторными попытками
   const fetchStudents = useCallback(async (retryCount = 0) => {
     try {
@@ -148,10 +184,10 @@ const Calendar: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching students:', error);
-      if (retryCount < 3) { // Максимум 3 попытки
+      if (retryCount < 3) {
         setTimeout(() => {
           fetchStudents(retryCount + 1);
-        }, 1000 * (retryCount + 1)); // Увеличиваем задержку с каждой попыткой
+        }, 1000 * (retryCount + 1));
       } else {
         setStudents([]);
       }
@@ -170,10 +206,10 @@ const Calendar: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching lessons:', error);
-      if (retryCount < 3) { // Максимум 3 попытки
+      if (retryCount < 3) {
         setTimeout(() => {
           fetchLessons(retryCount + 1);
-        }, 1000 * (retryCount + 1)); // Увеличиваем задержку с каждой попыткой
+        }, 1000 * (retryCount + 1));
       } else {
         setLessons([]);
       }
@@ -265,43 +301,41 @@ const Calendar: React.FC = () => {
   }, [selectedDate, selectedTime, selectedStudent, lessons, duration]);
 
   // Мемоизированный компонент для отображения урока
-  const LessonItem = memo(({ lesson }: { lesson: Lesson }) => {
+  const LessonItem = memo(({ 
+    lesson, 
+    onEdit, 
+    onDelete 
+  }: { 
+    lesson: Lesson;
+    onEdit: (lesson: Lesson) => void;
+    onDelete: (lessonId: number) => void;
+  }) => {
     const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
     const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
       event.stopPropagation();
       setMenuAnchorEl(event.currentTarget);
-      setSelectedLesson(lesson);
     };
 
     const handleMenuClose = () => {
       setMenuAnchorEl(null);
-      setSelectedLesson(null);
     };
 
     const handleEditClick = () => {
-      setEditingLesson(lesson);
-      setNewLesson({
-        student_id: lesson.student_id.toString(),
-        date: lesson.date,
-        duration: lesson.duration,
-      });
-      setOpenDialog(true);
+      onEdit(lesson);
       handleMenuClose();
     };
 
     const handleDeleteClick = () => {
-      handleDeleteLesson(lesson.id);
+      onDelete(lesson.id);
       handleMenuClose();
     };
 
     return (
       <Paper 
-        onClick={handleMenuClick}
         sx={{ 
           p: 2, 
           mb: 2,
-          cursor: 'pointer',
           position: 'relative',
           '&:hover': {
             backgroundColor: 'rgba(25, 118, 210, 0.05)',
@@ -371,6 +405,16 @@ const Calendar: React.FC = () => {
         <LessonItem 
           key={lesson.id} 
           lesson={lesson}
+          onEdit={(lesson) => {
+            setEditingLesson(lesson);
+            setNewLesson({
+              student_id: lesson.student_id.toString(),
+              date: lesson.date,
+              duration: lesson.duration,
+            });
+            setOpenDialog(true);
+          }}
+          onDelete={handleDeleteLesson}
         />
       ))}
     </TableCell>
@@ -416,6 +460,16 @@ const Calendar: React.FC = () => {
                       <LessonItem
                         key={lesson.id}
                         lesson={lesson}
+                        onEdit={(lesson) => {
+                          setEditingLesson(lesson);
+                          setNewLesson({
+                            student_id: lesson.student_id.toString(),
+                            date: lesson.date,
+                            duration: lesson.duration,
+                          });
+                          setOpenDialog(true);
+                        }}
+                        onDelete={handleDeleteLesson}
                       />
                     ))}
                   </TableCell>
@@ -426,7 +480,7 @@ const Calendar: React.FC = () => {
         </TableBody>
       </Table>
     );
-  }, [weekDays, getLessonsForHour]);
+  }, [weekDays, getLessonsForHour, handleDeleteLesson]);
 
   // Оптимизация рендеринга дневного представления
   const renderDayView = useCallback(() => {
@@ -444,6 +498,16 @@ const Calendar: React.FC = () => {
                     <LessonItem
                       key={lesson.id}
                       lesson={lesson}
+                      onEdit={(lesson) => {
+                        setEditingLesson(lesson);
+                        setNewLesson({
+                          student_id: lesson.student_id.toString(),
+                          date: lesson.date,
+                          duration: lesson.duration,
+                        });
+                        setOpenDialog(true);
+                      }}
+                      onDelete={handleDeleteLesson}
                     />
                   ))}
                 </TableCell>
@@ -453,7 +517,7 @@ const Calendar: React.FC = () => {
         </TableBody>
       </Table>
     );
-  }, [selectedDate, getLessonsForHour]);
+  }, [selectedDate, getLessonsForHour, handleDeleteLesson]);
 
   // Оптимизация рендеринга представления
   const renderView = useCallback(() => {
@@ -491,30 +555,6 @@ const Calendar: React.FC = () => {
       controller.abort();
     };
   }, [fetchStudents, fetchLessons]);
-
-  const handleDeleteLesson = async (lessonId: number) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await api.delete(`/lessons/${lessonId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.status === 200) {
-        setLessons(lessons.filter(lesson => lesson.id !== lessonId));
-        setSelectedLesson(null);
-        setAnchorEl(null);
-      }
-    } catch (error) {
-      console.error('Error deleting lesson:', error);
-      alert('Ошибка при удалении занятия');
-    }
-  };
 
   const handleEditLesson = async () => {
     if (!editingLesson) return;

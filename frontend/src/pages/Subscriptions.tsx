@@ -27,6 +27,7 @@ interface Subscription {
   name: string;
   price: number;
   lessons_count: number;
+  lessons_remaining: number;
 }
 
 const Subscriptions: React.FC = () => {
@@ -38,6 +39,7 @@ const Subscriptions: React.FC = () => {
     name: '',
     price: 0,
     lessons_count: 0,
+    lessons_remaining: 0
   });
 
   useEffect(() => {
@@ -76,6 +78,7 @@ const Subscriptions: React.FC = () => {
         name: '',
         price: 0,
         lessons_count: 0,
+        lessons_remaining: 0
       });
     } catch (error) {
       console.error('Error creating subscription:', error);
@@ -160,7 +163,7 @@ const Subscriptions: React.FC = () => {
             type="number"
             fullWidth
             value={newSubscription.price}
-            onChange={(e) => setNewSubscription({ ...newSubscription, price: parseInt(e.target.value) || 0 })}
+            onChange={(e) => setNewSubscription({ ...newSubscription, price: parseFloat(e.target.value) || 0 })}
           />
           <TextField
             margin="dense"
@@ -168,7 +171,14 @@ const Subscriptions: React.FC = () => {
             type="number"
             fullWidth
             value={newSubscription.lessons_count}
-            onChange={(e) => setNewSubscription({ ...newSubscription, lessons_count: parseInt(e.target.value) || 0 })}
+            onChange={(e) => {
+              const count = parseInt(e.target.value) || 0;
+              setNewSubscription({ 
+                ...newSubscription, 
+                lessons_count: count,
+                lessons_remaining: count
+              });
+            }}
           />
         </DialogContent>
         <DialogActions>

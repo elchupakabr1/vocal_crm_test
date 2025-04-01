@@ -162,7 +162,8 @@ const Students: React.FC = () => {
         last_name: formData.lastName,
         phone: formData.phone,
         total_lessons: selectedSubscription ? selectedSubscription.lessons_count : 0,
-        remaining_lessons: selectedSubscription ? selectedSubscription.lessons_count : 0
+        remaining_lessons: selectedSubscription ? selectedSubscription.lessons_count : 0,
+        subscription_id: formData.subscriptionId ? parseInt(formData.subscriptionId) : null
       });
 
       setStudents([...students, response.data]);
@@ -187,7 +188,8 @@ const Students: React.FC = () => {
         last_name: selectedStudent.last_name,
         phone: selectedStudent.phone,
         total_lessons: selectedStudent.total_lessons,
-        remaining_lessons: selectedStudent.remaining_lessons
+        remaining_lessons: selectedStudent.remaining_lessons,
+        subscription_id: selectedStudent.subscription_id
       });
 
       await fetchStudents();
@@ -237,27 +239,58 @@ const Students: React.FC = () => {
               <TableCell onClick={() => handleSort('remaining_lessons')} style={{ cursor: 'pointer' }}>
                 Осталось уроков {sortConfig.key === 'remaining_lessons' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableCell>
+              <TableCell>Активный абонемент</TableCell>
               <TableCell>Действия</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {sortedStudents.map((student) => (
-              <TableRow key={student.id}>
-                <TableCell>{student.first_name}</TableCell>
-                <TableCell>{student.last_name}</TableCell>
-                <TableCell>{student.phone}</TableCell>
-                <TableCell>{student.total_lessons}</TableCell>
-                <TableCell>{student.remaining_lessons}</TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleOpenStudentCard(student)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(student.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
+            {sortedStudents.map((student) => {
+              const subscription = subscriptions.find(sub => sub.id === student.subscription_id);
+              return (
+                <TableRow key={student.id}>
+                  <TableCell>{student.first_name}</TableCell>
+                  <TableCell>{student.last_name}</TableCell>
+                  <TableCell>{student.phone}</TableCell>
+                  <TableCell>{student.total_lessons}</TableCell>
+                  <TableCell>{student.remaining_lessons}</TableCell>
+                  <TableCell>
+                    {subscription ? (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        bgcolor: 'success.light',
+                        color: 'success.contrastText',
+                        p: 1,
+                        borderRadius: 1,
+                        maxWidth: 'fit-content'
+                      }}>
+                        {subscription.name}
+                      </Box>
+                    ) : (
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        bgcolor: 'grey.300',
+                        color: 'text.secondary',
+                        p: 1,
+                        borderRadius: 1,
+                        maxWidth: 'fit-content'
+                      }}>
+                        Нет абонемента
+                      </Box>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <IconButton onClick={() => handleOpenStudentCard(student)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton onClick={() => handleDelete(student.id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </TableContainer>
