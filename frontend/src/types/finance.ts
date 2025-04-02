@@ -21,6 +21,7 @@ export interface Income {
   description: string;
   category: string;
   date: string;
+  subscription_id?: number;
   created_at: string;
 }
 

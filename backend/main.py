@@ -28,6 +28,7 @@ from schemas import TokenData
 import logging
 import shutil
 from config import settings
+from contextlib import asynccontextmanager
 
 # Настройка логгера
 logging.basicConfig(level=logging.INFO)
@@ -38,11 +39,30 @@ load_dotenv()
 # Создание таблиц
 models.Base.metadata.create_all(bind=engine)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Инициализация при запуске
+    FastAPICache.init(InMemoryBackend())
+    yield
+    # Очистка при выключении
+    await FastAPICache.clear()
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
 )
+
+# Добавляем middleware для отключения кэширования
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 # Настройка CORS
 app.add_middleware(
@@ -73,11 +93,6 @@ db_pool = ThreadPoolExecutor(max_workers=4)
 @lru_cache(maxsize=1)
 def get_db_connection():
     return sqlite3.connect(settings.DATABASE_URL.replace('sqlite:///', ''), check_same_thread=False)
-
-# Инициализация кэша при запуске приложения
-@app.on_event("startup")
-async def startup():
-    FastAPICache.init(InMemoryBackend())
 
 # Модели данных
 class Token(BaseModel):
@@ -274,7 +289,6 @@ async def create_student(
         )
 
 @app.get(f"{settings.API_V1_STR}/students/", response_model=List[schemas.Student])
-@cache(expire=60)  # Кэширование на 1 минуту
 async def read_students(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -286,7 +300,17 @@ async def read_students(
         .offset(skip)\
         .limit(limit)\
         .all()
-    return students
+    
+    response = JSONResponse(
+        content=[jsonable_encoder(student) for student in students],
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+            "X-Content-Type-Options": "nosniff"
+        }
+    )
+    return response
 
 @app.get("/api/students/{student_id}", response_model=schemas.Student)
 async def read_student(
@@ -302,43 +326,31 @@ async def read_student(
         raise HTTPException(status_code=404, detail="Student not found")
     return db_student
 
-@app.put("/api/students/{student_id}", response_model=schemas.Student)
+@app.put(f"{settings.API_V1_STR}/students/{{student_id}}", response_model=schemas.Student)
 async def update_student(
     student_id: int,
-    student: schemas.StudentCreate,
+    student: schemas.StudentUpdate,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    try:
-        logger.info(f"Получены данные для обновления студента: {student.model_dump()}")
-        db_student = db.query(models.Student).filter(
-            models.Student.id == student_id,
-            models.Student.user_id == current_user.id
-        ).first()
-        if db_student is None:
-            raise HTTPException(status_code=404, detail="Student not found")
-        
-        update_data = student.model_dump()
-        logger.info(f"Данные для обновления: {update_data}")
-        
-        # Логируем текущее состояние студента
-        logger.info(f"Текущее состояние студента: subscription_id={db_student.subscription_id}")
-        
-        for key, value in update_data.items():
-            setattr(db_student, key, value)
-            logger.info(f"Установлено значение {key}={value}")
-        
-        # Логируем состояние после обновления
-        logger.info(f"Состояние студента после обновления: subscription_id={db_student.subscription_id}")
-        
-        db.commit()
-        db.refresh(db_student)
-        logger.info(f"Студент успешно обновлен: {db_student.id}, subscription_id: {db_student.subscription_id}")
-        return db_student
-    except Exception as e:
-        logger.error(f"Error updating student {student_id}: {str(e)}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+    db_student = db.query(models.Student).filter(
+        models.Student.id == student_id,
+        models.Student.user_id == current_user.id
+    ).first()
+    if not db_student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Обновляем данные студента
+    for key, value in student.model_dump(exclude_unset=True).items():
+        setattr(db_student, key, value)
+    
+    db.commit()
+    db.refresh(db_student)
+    
+    # Очищаем кэш после обновления
+    await FastAPICache.clear()
+    
+    return db_student
 
 @app.delete("/api/students/{student_id}")
 async def delete_student(
@@ -680,5 +692,5 @@ if __name__ == "__main__":
         app,
         host=settings.HOST,
         port=settings.PORT,
-        debug=settings.DEBUG
+        reload=settings.DEBUG
     ) 

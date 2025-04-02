@@ -37,10 +37,25 @@ class StudentBase(BaseModel):
             raise ValueError('Оставшееся количество уроков не может превышать общее количество')
         return v
 
-class StudentCreate(StudentBase):
-    pass
+class StudentCreate(BaseModel):
+    first_name: str
+    last_name: str
+    phone: str
+    email: Optional[str] = None
+    subscription_id: Optional[int] = None
+    total_lessons: Optional[int] = 0
+    remaining_lessons: Optional[int] = 0
 
-class Student(StudentBase):
+class StudentUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    subscription_id: Optional[int] = None
+    total_lessons: Optional[int] = None
+    remaining_lessons: Optional[int] = None
+
+class Student(StudentCreate):
     id: int
     user_id: int
     created_at: datetime
@@ -82,7 +97,7 @@ class Subscription(SubscriptionBase):
 
 class ExpenseBase(BaseModel):
     amount: float = Field(..., ge=0)
-    description: str = Field(..., min_length=2, max_length=200)
+    description: Optional[str] = Field(None, max_length=200)
     category: str = Field(..., min_length=2, max_length=50)
     date: datetime | None = None
 
@@ -99,9 +114,10 @@ class Expense(ExpenseBase):
 
 class IncomeBase(BaseModel):
     amount: float = Field(..., ge=0)
-    description: str = Field(..., min_length=2, max_length=200)
+    description: Optional[str] = Field(None, max_length=200)
     category: str = Field(..., min_length=2, max_length=50)
     date: datetime | None = None
+    subscription_id: Optional[int] = None
 
 class IncomeCreate(IncomeBase):
     pass

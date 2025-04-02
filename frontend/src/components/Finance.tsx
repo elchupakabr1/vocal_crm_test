@@ -108,13 +108,29 @@ const Finance: React.FC = () => {
         api.get('/expenses/', {
           params: { skip: (page - 1) * ITEMS_PER_PAGE, limit: ITEMS_PER_PAGE },
           signal: abortControllerRef.current.signal
+        }).catch((err: Error) => {
+          if (err.name === 'CanceledError') return { data: [] };
+          throw err;
         }),
         api.get('/incomes/', {
           params: { skip: (page - 1) * ITEMS_PER_PAGE, limit: ITEMS_PER_PAGE },
           signal: abortControllerRef.current.signal
+        }).catch((err: Error) => {
+          if (err.name === 'CanceledError') return { data: [] };
+          throw err;
         }),
-        api.get('/subscriptions/', { signal: abortControllerRef.current.signal }),
-        api.get('/students/', { signal: abortControllerRef.current.signal })
+        api.get('/subscriptions/', { 
+          signal: abortControllerRef.current.signal 
+        }).catch((err: Error) => {
+          if (err.name === 'CanceledError') return { data: [] };
+          throw err;
+        }),
+        api.get('/students/', { 
+          signal: abortControllerRef.current.signal 
+        }).catch((err: Error) => {
+          if (err.name === 'CanceledError') return { data: [] };
+          throw err;
+        })
       ]);
 
       setExpenses(expensesResponse.data);
@@ -123,7 +139,7 @@ const Finance: React.FC = () => {
       setStudents(studentsResponse.data);
       setTotalPages(Math.ceil(expensesResponse.data.length / ITEMS_PER_PAGE));
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') return;
+      if (err instanceof Error && err.name === 'CanceledError') return;
       setError('Ошибка при загрузке данных');
       console.error('Error fetching data:', err);
     } finally {
@@ -138,7 +154,7 @@ const Finance: React.FC = () => {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchData]);
+  }, [fetchData, debouncedDate]);
 
   const calculateSummary = useCallback(() => {
     const monthStart = startOfMonth(debouncedDate);
@@ -190,6 +206,15 @@ const Finance: React.FC = () => {
 
   const handleAddExpense = async () => {
     try {
+      if (!newExpense.category || newExpense.category.length < 2) {
+        setError('Категория должна содержать минимум 2 символа');
+        return;
+      }
+      if (!newExpense.amount || newExpense.amount <= 0) {
+        setError('Сумма должна быть больше 0');
+        return;
+      }
+
       const newExpenseResponse = await api.post('/expenses/', newExpense);
       setExpenses(prev => [...prev, newExpenseResponse.data]);
       setShowAddExpense(false);
@@ -199,6 +224,7 @@ const Finance: React.FC = () => {
         category: '',
         date: new Date().toISOString().split('T')[0]
       });
+      setError(null);
     } catch (error) {
       console.error('Error adding expense:', error);
       setError('Ошибка при добавлении расхода');
@@ -207,6 +233,15 @@ const Finance: React.FC = () => {
 
   const handleAddIncome = async () => {
     try {
+      if (!newIncome.category || newIncome.category.length < 2) {
+        setError('Категория должна содержать минимум 2 символа');
+        return;
+      }
+      if (!newIncome.amount || newIncome.amount <= 0) {
+        setError('Сумма должна быть больше 0');
+        return;
+      }
+
       const response = await api.post('/incomes/', newIncome);
       setIncomes(prev => [response.data, ...prev]);
       setShowAddIncome(false);
@@ -216,6 +251,7 @@ const Finance: React.FC = () => {
         category: '',
         date: new Date().toISOString().split('T')[0]
       });
+      setError(null);
     } catch (error) {
       console.error('Error adding income:', error);
       setError('Ошибка при добавлении дохода');
@@ -272,19 +308,63 @@ const Finance: React.FC = () => {
     }
   };
 
-  const handleSubscriptionSelect = useCallback((subscriptionId: number) => {
+  const handleCategoryChange = (type: 'expense' | 'income', category: string) => {
+    const defaultDescriptions = {
+      expense: {
+        'rent': 'Аренда помещения',
+        'utilities': 'Коммунальные услуги',
+        'equipment': 'Покупка оборудования',
+        'salary': 'Зарплата сотрудникам',
+        'other': 'Прочие расходы'
+      },
+      income: {
+        'subscription': 'Оплата абонемента',
+        'lesson': 'Оплата разового занятия',
+        'other': 'Прочие доходы'
+      }
+    };
+
+    if (type === 'expense') {
+      setNewExpense(prev => ({
+        ...prev,
+        category,
+        description: defaultDescriptions.expense[category as keyof typeof defaultDescriptions.expense] || ''
+      }));
+    } else {
+      setNewIncome(prev => ({
+        ...prev,
+        category,
+        description: defaultDescriptions.income[category as keyof typeof defaultDescriptions.income] || '',
+        amount: category === 'subscription' ? 0 : prev.amount
+      }));
+    }
+  };
+
+  const handleStudentSelect = (studentId: number) => {
+    const selectedStudent = students.find(s => s.id === studentId);
+    if (selectedStudent) {
+      setSelectedStudent(selectedStudent);
+      if (newIncome.category === 'subscription') {
+        setNewIncome(prev => ({
+          ...prev,
+          description: `Оплата абонемента: ${selectedStudent.last_name} ${selectedStudent.first_name}`
+        }));
+      }
+    }
+  };
+
+  const handleSubscriptionSelect = (subscriptionId: number) => {
     const selectedSubscription = subscriptions.find(s => s.id === subscriptionId);
     if (selectedSubscription) {
-      setNewIncome({
-        ...newIncome,
+      setNewIncome(prev => ({
+        ...prev,
         amount: selectedSubscription.price,
         description: selectedStudent 
           ? `Оплата абонемента: ${selectedSubscription.name} - ${selectedStudent.last_name} ${selectedStudent.first_name}`
-          : `Оплата абонемента: ${selectedSubscription.name}`,
-        category: 'subscription'
-      });
+          : `Оплата абонемента: ${selectedSubscription.name}`
+      }));
     }
-  }, [subscriptions, selectedStudent]);
+  };
 
   const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
@@ -497,17 +577,12 @@ const Finance: React.FC = () => {
               <InputLabel>Категория</InputLabel>
               <Select
                 value={editingExpense?.category || newExpense.category}
-                onChange={(e) => {
-                  if (editingExpense) {
-                    setEditingExpense({ ...editingExpense, category: e.target.value });
-                  } else {
-                    setNewExpense({ ...newExpense, category: e.target.value });
-                  }
-                }}
+                onChange={(e) => handleCategoryChange('expense', e.target.value)}
               >
                 <MenuItem value="rent">Аренда</MenuItem>
                 <MenuItem value="utilities">Коммунальные услуги</MenuItem>
                 <MenuItem value="equipment">Оборудование</MenuItem>
+                <MenuItem value="salary">Зарплата</MenuItem>
                 <MenuItem value="other">Прочее</MenuItem>
               </Select>
             </FormControl>
@@ -551,6 +626,7 @@ const Finance: React.FC = () => {
                   setNewIncome({ ...newIncome, amount: parseFloat(e.target.value) });
                 }
               }}
+              disabled={newIncome.category === 'subscription'}
             />
             <TextField
               fullWidth
@@ -564,23 +640,49 @@ const Finance: React.FC = () => {
                   setNewIncome({ ...newIncome, description: e.target.value });
                 }
               }}
+              disabled={newIncome.category === 'subscription'}
             />
             <FormControl fullWidth margin="dense">
               <InputLabel>Категория</InputLabel>
               <Select
                 value={editingIncome?.category || newIncome.category}
-                onChange={(e) => {
-                  if (editingIncome) {
-                    setEditingIncome({ ...editingIncome, category: e.target.value });
-                  } else {
-                    setNewIncome({ ...newIncome, category: e.target.value });
-                  }
-                }}
+                onChange={(e) => handleCategoryChange('income', e.target.value)}
               >
                 <MenuItem value="subscription">Абонемент</MenuItem>
+                <MenuItem value="lesson">Разовое занятие</MenuItem>
                 <MenuItem value="other">Прочее</MenuItem>
               </Select>
             </FormControl>
+            {newIncome.category === 'subscription' && (
+              <>
+                <FormControl fullWidth margin="dense">
+                  <InputLabel>Ученик</InputLabel>
+                  <Select
+                    value={selectedStudent?.id || ''}
+                    onChange={(e) => handleStudentSelect(Number(e.target.value))}
+                  >
+                    {students.map(student => (
+                      <MenuItem key={student.id} value={student.id}>
+                        {student.last_name} {student.first_name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth margin="dense">
+                  <InputLabel>Абонемент</InputLabel>
+                  <Select
+                    value={newIncome.subscription_id || ''}
+                    onChange={(e) => handleSubscriptionSelect(Number(e.target.value))}
+                  >
+                    {subscriptions.map(subscription => (
+                      <MenuItem key={subscription.id} value={subscription.id}>
+                        {subscription.name} - {subscription.price} ₽ ({subscription.lessons_count} занятий)
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </>
+            )}
             <DatePicker
               label="Дата"
               value={editingIncome?.date ? new Date(editingIncome.date) : newIncome.date ? new Date(newIncome.date) : new Date()}

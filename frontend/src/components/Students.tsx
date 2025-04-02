@@ -26,7 +26,13 @@ import { StudentForm } from './StudentForm';
 
 const api = axios.create({
   baseURL: 'http://localhost:8000/api',
-  withCredentials: true
+  withCredentials: true,
+  headers: {
+    'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'X-Content-Type-Options': 'nosniff'
+  }
 });
 
 export const Students: React.FC = () => {
@@ -80,8 +86,12 @@ export const Students: React.FC = () => {
         const response = await api.put(`/students/${editingStudent.id}`, updateData);
         console.log('Ответ сервера:', response.data);
         
-        // Обновляем список студентов
-        await fetchStudents();
+        // Оптимизированное обновление состояния
+        setStudents(prevStudents => 
+          prevStudents.map(student => 
+            student.id === editingStudent.id ? response.data : student
+          )
+        );
         
         // Обновляем selectedStudent, если он редактируется
         if (selectedStudent?.id === editingStudent.id) {
@@ -97,7 +107,7 @@ export const Students: React.FC = () => {
         
         const response = await api.post('/students/', createData);
         console.log('Ответ сервера:', response.data);
-        setStudents([...students, response.data]);
+        setStudents(prevStudents => [...prevStudents, response.data]);
       }
       
       setOpenAddDialog(false);
@@ -114,7 +124,7 @@ export const Students: React.FC = () => {
     if (window.confirm('Вы уверены, что хотите удалить этого студента?')) {
       try {
         await api.delete(`/students/${id}`);
-        fetchStudents();
+        setStudents(prevStudents => prevStudents.filter(student => student.id !== id));
       } catch (error) {
         console.error('Error deleting student:', error);
       }
@@ -148,8 +158,12 @@ export const Students: React.FC = () => {
       const response = await api.put(`/students/${studentId}`, studentData);
       console.log('Ответ сервера при назначении абонемента:', response.data);
       
-      // Обновляем список студентов
-      await fetchStudents();
+      // Оптимизированное обновление состояния
+      setStudents(prevStudents => 
+        prevStudents.map(student => 
+          student.id === studentId ? response.data : student
+        )
+      );
       
       // Обновляем выбранного студента
       setSelectedStudent(response.data);
