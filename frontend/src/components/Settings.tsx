@@ -9,6 +9,7 @@ import {
   Alert,
 } from '@mui/material';
 import axios from 'axios';
+import '../styles/Settings.css';
 
 const Settings: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');

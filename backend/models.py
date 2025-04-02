@@ -50,6 +50,8 @@ class Lesson(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    is_completed = Column(Boolean, default=False)
+    is_cancelled = Column(Boolean, default=False)
 
     student = relationship("Student", back_populates="lessons")
     user = relationship("User", back_populates="lessons")

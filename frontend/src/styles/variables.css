@@ -1,0 +1,62 @@
+:root {
+  /* Основные цвета */
+  --primary-color: #1a73e8;
+  --primary-hover: #1557b0;
+  
+  /* Фоновые цвета */
+  --background-light: #f8f9fa;
+  --background-white: #fff;
+  --background-hover: #f1f3f4;
+  --background-today: #e8f0fe;
+  --background-event: #e8f0fe;
+  --background-event-hover: #d2e3fc;
+  --background-cancelled: #ffebee;
+  --background-cancelled-hover: #ffcdd2;
+  --background-calendar-event: #e8f0fe;
+  --background-button-light: #f1f3f4;
+  --background-button-light-hover: #e8eaed;
+  
+  /* Цвета границ */
+  --border-color: #e0e0e0;
+  --border-color-light: #dadce0;
+  
+  /* Текстовые цвета */
+  --text-primary: #202124;
+  --text-secondary: #5f6368;
+  --text-muted: #9aa0a6;
+  --text-white: #fff;
+  --text-calendar-white: #fff;
+  --text-calendar-color: #000;
+  --text-cancelled: #c62828;
+  --text-success: #0d652d;
+  --text-warning: #b06000;
+  
+  /* Тени */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  
+  /* Размеры */
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  
+  /* Отступы */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  
+  /* Размеры шрифтов */
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  
+  /* Веса шрифтов */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+} 

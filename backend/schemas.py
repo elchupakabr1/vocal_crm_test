@@ -65,9 +65,11 @@ class Student(StudentCreate):
         from_attributes = True
 
 class LessonBase(BaseModel):
-    date: datetime
-    duration: int = Field(..., ge=30, le=180)
     student_id: int
+    date: datetime
+    duration: int
+    is_completed: bool = False
+    is_cancelled: bool = False
 
 class LessonCreate(LessonBase):
     pass

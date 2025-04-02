@@ -1,0 +1,68 @@
+.students-container {
+  padding: 2rem;
+}
+
+.students-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.students-title {
+  color: var(--text-primary);
+}
+
+.students-add-button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
+  color: var(--text-white);
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.students-add-button:hover {
+  background-color: var(--primary-hover);
+}
+
+.students-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: var(--background-white);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.students-table th,
+.students-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.students-table th {
+  background-color: var(--background-light);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.students-table tr:hover {
+  background-color: var(--background-hover);
+}
+
+.students-action-button {
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.students-action-button:hover {
+  color: var(--primary-color);
+} 

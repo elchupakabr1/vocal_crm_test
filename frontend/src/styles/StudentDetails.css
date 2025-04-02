@@ -1,0 +1,83 @@
+.student-details-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: var(--background-white);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+.student-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.student-details-title {
+  color: var(--text-primary);
+}
+
+.student-details-back-button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--background-light);
+  color: var(--text-secondary);
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.student-details-back-button:hover {
+  background-color: var(--background-hover);
+}
+
+.student-details-section {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.student-details-section:last-child {
+  border-bottom: none;
+}
+
+.student-details-section-title {
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.student-details-info {
+  display: grid;
+  gap: 1rem;
+}
+
+.student-details-info-item {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.student-details-label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.student-details-value {
+  color: var(--text-primary);
+}
+
+.student-details-edit-button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
+  color: var(--text-white);
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.student-details-edit-button:hover {
+  background-color: var(--primary-hover);
+} 

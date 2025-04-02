@@ -11,15 +11,16 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  ClickAwayListener,
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
-import { ru } from 'date-fns/locale';
+import ru from 'date-fns/locale/ru';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import api from '@/services/api';
+import '../styles/Calendar.css';
+import { CompanyConfig } from '../config/CompanyConfig';
 
 interface Lesson {
   id: number;
@@ -39,10 +40,6 @@ const Calendar: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
-
-  const handleClickAway = () => {
-    setAnchorEl(null);
-  };
 
   const handleOpenMenu = (event: React.MouseEvent<HTMLElement>, lesson: Lesson) => {
     event.stopPropagation();
@@ -68,7 +65,7 @@ const Calendar: React.FC = () => {
     if (!selectedLesson) return;
 
     try {
-      await api.put(`/lessons/${selectedLesson.id}`, {
+      await api.patch(`/lessons/${selectedLesson.id}`, {
         date: selectedLesson.date,
         duration: selectedLesson.duration
       });
@@ -237,9 +234,9 @@ const Calendar: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseEditDialog}>Отмена</Button>
+          <Button onClick={handleCloseEditDialog}>{CompanyConfig.components.studentForm.cancel}</Button>
           <Button onClick={handleSaveLesson} variant="contained">
-            Сохранить
+            {CompanyConfig.components.studentForm.save}
           </Button>
         </DialogActions>
       </Dialog>

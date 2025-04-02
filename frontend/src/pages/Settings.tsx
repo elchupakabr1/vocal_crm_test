@@ -16,6 +16,8 @@ import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import CloudDownloadIcon from '@mui/icons-material/CloudDownload';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import '../styles/Settings.css';
+import { CompanyConfig } from '../config/CompanyConfig';
 
 const Settings: React.FC = () => {
   const { isAuthenticated } = useAuth();
@@ -142,7 +144,7 @@ const Settings: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Paper sx={{ p: 3 }}>
         <Typography variant="h4" gutterBottom>
-          Настройки
+          {CompanyConfig.pages.settings}
         </Typography>
 
         <Box sx={{ mt: 3 }}>
@@ -224,7 +226,7 @@ const Settings: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Отмена</Button>
+          <Button onClick={() => setOpenDialog(false)}>{CompanyConfig.components.studentForm.cancel}</Button>
           <Button onClick={handleChangePassword} variant="contained">
             Изменить
           </Button>

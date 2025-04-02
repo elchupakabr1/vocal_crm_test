@@ -9,6 +9,7 @@ import {
   Box,
 } from '@mui/material';
 import { useAuth } from '@/contexts/AuthContext';
+import '../styles/Login.css';
 
 const Login: React.FC = () => {
   const [username, setUsername] = useState('');

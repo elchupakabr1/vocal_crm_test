@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, useNavigate, Link } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Box,
@@ -23,6 +23,8 @@ import {
 } from '@mui/icons-material';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { useAuth } from '@/contexts/AuthContext';
+import '../styles/Layout.css';
+import { CompanyConfig } from '../config/CompanyConfig';
 
 const drawerWidth = 240;
 
@@ -41,11 +43,11 @@ const Layout: React.FC = () => {
   };
 
   const menuItems = [
-    { text: 'Календарь', icon: <CalendarIcon />, path: '/' },
-    { text: 'Ученики', icon: <PeopleIcon />, path: '/students' },
-    { text: 'Абонементы', icon: <CardMembershipIcon />, path: '/subscriptions' },
-    { text: 'Настройки', icon: <SettingsIcon />, path: '/settings' },
-    { text: 'Финансы', icon: <AccountBalanceIcon />, path: '/finance' },
+    { text: CompanyConfig.pages.calendar, icon: <CalendarIcon />, path: '/' },
+    { text: CompanyConfig.pages.students, icon: <PeopleIcon />, path: '/students' },
+    { text: CompanyConfig.pages.subscriptions, icon: <CardMembershipIcon />, path: '/subscriptions' },
+    { text: CompanyConfig.pages.settings, icon: <SettingsIcon />, path: '/settings' },
+    { text: CompanyConfig.pages.finance, icon: <AccountBalanceIcon />, path: '/finance' },
   ];
 
   const drawer = (
@@ -93,7 +95,7 @@ const Layout: React.FC = () => {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" noWrap component="div">
-            Вокальная школа
+            {CompanyConfig.companyName}
           </Typography>
         </Toolbar>
       </AppBar>

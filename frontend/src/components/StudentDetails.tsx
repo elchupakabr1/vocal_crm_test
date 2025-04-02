@@ -24,9 +24,10 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ru } from 'date-fns/locale';
+import ru from 'date-fns/locale/ru';
 import { format } from 'date-fns';
 import api from '@/services/api';
+import '../styles/StudentDetails.css';
 
 interface Student {
   id: number;

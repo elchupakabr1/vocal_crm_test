@@ -12,18 +12,19 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.responses import FileResponse
 from datetime import datetime, timedelta
+from api_config import SECURITY_CONFIG
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Настройки безопасности
-SECRET_KEY = "your-secret-key-here"  # В продакшене используйте безопасный ключ
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+SECRET_KEY = SECURITY_CONFIG["secret_key"]
+ALGORITHM = SECURITY_CONFIG["algorithm"]
+ACCESS_TOKEN_EXPIRE_MINUTES = SECURITY_CONFIG["access_token_expire_minutes"]
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = SECURITY_CONFIG["oauth2_scheme"]
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -42,7 +43,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "Authorization"],
     expose_headers=["*"]
 )
 

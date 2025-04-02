@@ -20,9 +20,13 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",  # React development server
         "http://localhost:8000",  # FastAPI development server
+        "http://127.0.0.1:3000",  # React development server (альтернативный адрес)
+        "http://127.0.0.1:8000",  # FastAPI development server (альтернативный адрес)
         "http://213.226.124.30",  # IP сервера
         "http://213.226.124.30:3000",  # IP сервера с портом фронтенда
         "http://213.226.124.30:8000",  # IP сервера с портом бэкенда
+        "http://localhost",  # Локальный хост
+        "http://127.0.0.1",  # Локальный хост (альтернативный адрес)
         # Добавьте здесь домен, если он будет настроен
     ]
     

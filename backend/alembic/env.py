@@ -7,7 +7,7 @@ from alembic import context
 
 import os
 import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from models import Base
 from database import SQLALCHEMY_DATABASE_URL

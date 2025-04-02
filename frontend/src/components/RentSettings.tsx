@@ -11,6 +11,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import api from '@/services/api';
+import { CompanyConfig } from '../config/CompanyConfig';
 
 interface RentSettings {
   amount: number;
@@ -65,28 +66,28 @@ const RentSettings: React.FC = () => {
     <Box sx={{ mb: 3 }}>
       <Paper sx={{ p: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">Настройки аренды</Typography>
+          <Typography variant="h6">{CompanyConfig.components.rentSettings.title}</Typography>
           <Button variant="contained" onClick={() => setShowDialog(true)}>
-            Настроить
+            {CompanyConfig.components.rentSettings.configure}
           </Button>
         </Box>
-        <Typography>Сумма: {settings.amount} ₽</Typography>
-        <Typography>День списания: {settings.payment_day}</Typography>
+        <Typography>{CompanyConfig.components.rentSettings.amount}: {settings.amount} ₽</Typography>
+        <Typography>{CompanyConfig.components.rentSettings.paymentDay}: {settings.payment_day}</Typography>
       </Paper>
 
       <Dialog open={showDialog} onClose={() => setShowDialog(false)}>
-        <DialogTitle>Настройки аренды</DialogTitle>
+        <DialogTitle>{CompanyConfig.components.rentSettings.title}</DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
             <TextField
-              label="Сумма аренды"
+              label={CompanyConfig.components.rentSettings.amount}
               type="number"
               value={settings.amount}
               onChange={(e) => setSettings({ ...settings, amount: Number(e.target.value) })}
               fullWidth
             />
             <TextField
-              label="День списания"
+              label={CompanyConfig.components.rentSettings.paymentDay}
               type="number"
               value={settings.payment_day}
               onChange={(e) => setSettings({ ...settings, payment_day: Number(e.target.value) })}
@@ -97,9 +98,9 @@ const RentSettings: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowDialog(false)}>Отмена</Button>
+          <Button onClick={() => setShowDialog(false)}>{CompanyConfig.components.studentForm.cancel}</Button>
           <Button onClick={handleSave} variant="contained" color="primary">
-            Сохранить
+            {CompanyConfig.components.rentSettings.save}
           </Button>
         </DialogActions>
       </Dialog>

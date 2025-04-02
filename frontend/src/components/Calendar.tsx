@@ -34,7 +34,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ru } from 'date-fns/locale';
+import ru from 'date-fns/locale/ru';
 import { 
   format, 
   addMinutes, 
@@ -49,11 +49,24 @@ import {
   isToday,
   parseISO,
   setHours,
-  setMinutes
+  setMinutes,
+  addMonths,
+  subMonths,
+  startOfDay,
+  addDays,
+  endOfDay
 } from 'date-fns';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import AddIcon from '@mui/icons-material/Add';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import api from '@/services/api';
 import { useAuth } from '@/contexts/AuthContext';
+import '@/styles/Calendar.css';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import CheckIcon from '@mui/icons-material/Check';
+import CancelIcon from '@mui/icons-material/Cancel';
 
 interface Student {
   id: number;
@@ -70,6 +83,7 @@ interface Lesson {
   date: Date;
   duration: number;
   is_completed: boolean;
+  is_cancelled: boolean;
   student: Student;
 }
 
@@ -136,41 +150,85 @@ const Calendar: React.FC = () => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [duration, setDuration] = useState('60');
 
-  const handleDeleteLesson = useCallback(async (lessonId: number) => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+  // Объявляем все функции в начале компонента
+  const handleLessonMenuClose = useCallback(() => {
+    setAnchorEl(null);
+    setSelectedLesson(null);
+  }, []);
 
-      // Находим урок, который будем удалять
-      const lessonToDelete = lessons.find(lesson => lesson.id === lessonId);
-      if (!lessonToDelete) {
-        throw new Error('Lesson not found');
-      }
-
-      const response = await api.delete(`/lessons/${lessonId}/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+  const handleDeleteLesson = useCallback(async () => {
+    if (selectedLesson) {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
         }
-      });
 
-      if (response.status === 200) {
-        // Обновляем список уроков
-        setLessons(lessons.filter(lesson => lesson.id !== lessonId));
+        await api.delete(`/lessons/${selectedLesson.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
-        // Обновляем количество оставшихся занятий у ученика
-        setStudents(students.map(student => 
-          student.id === lessonToDelete.student_id
-            ? { ...student, remaining_lessons: student.remaining_lessons + 1 }
-            : student
-        ));
+        setLessons(prevLessons => prevLessons.filter(l => l.id !== selectedLesson.id));
+        handleLessonMenuClose();
+      } catch (error) {
+        console.error('Error deleting lesson:', error);
       }
-    } catch (error) {
-      console.error('Error deleting lesson:', error);
-      alert('Ошибка при удалении занятия');
     }
-  }, [lessons, students]);
+  }, [selectedLesson, handleLessonMenuClose]);
+
+  const handleMarkAsCompleted = useCallback(async () => {
+    if (selectedLesson) {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        await api.patch(`/lessons/${selectedLesson.id}/`, {
+          status: 'completed'
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        setLessons(prevLessons => prevLessons.map(l => 
+          l.id === selectedLesson.id ? { ...l, status: 'completed' } : l
+        ));
+        handleLessonMenuClose();
+      } catch (error) {
+        console.error('Error marking lesson as completed:', error);
+      }
+    }
+  }, [selectedLesson, handleLessonMenuClose]);
+
+  const handleCancelLesson = useCallback(async () => {
+    if (selectedLesson) {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        await api.patch(`/lessons/${selectedLesson.id}/`, {
+          status: 'cancelled'
+        }, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        setLessons(prevLessons => prevLessons.map(l => 
+          l.id === selectedLesson.id ? { ...l, status: 'cancelled' } : l
+        ));
+        handleLessonMenuClose();
+      } catch (error) {
+        console.error('Error cancelling lesson:', error);
+      }
+    }
+  }, [selectedLesson, handleLessonMenuClose]);
 
   // Функция для загрузки учеников с повторными попытками
   const fetchStudents = useCallback(async (retryCount = 0) => {
@@ -337,8 +395,11 @@ const Calendar: React.FC = () => {
           p: 2, 
           mb: 2,
           position: 'relative',
+          backgroundColor: lesson.is_cancelled ? '#ffebee' : 'inherit',
+          color: lesson.is_cancelled ? '#c62828' : 'inherit',
+          textDecoration: lesson.is_cancelled ? 'line-through' : 'none',
           '&:hover': {
-            backgroundColor: 'rgba(25, 118, 210, 0.05)',
+            backgroundColor: lesson.is_cancelled ? '#ffcdd2' : 'rgba(25, 118, 210, 0.05)',
           },
         }}
       >
@@ -350,6 +411,9 @@ const Calendar: React.FC = () => {
               {format(new Date(lesson.date), 'HH:mm')}
             </Typography>
             <Typography variant="body2">{lesson.student.remaining_lessons} занятий</Typography>
+            {lesson.is_cancelled && (
+              <Typography variant="body2" color="error">Отменено</Typography>
+            )}
           </Box>
           <IconButton onClick={handleMenuClick}>
             <MoreVertIcon />
@@ -378,6 +442,9 @@ const Calendar: React.FC = () => {
         >
           <MenuItem onClick={handleEditClick}>Редактировать</MenuItem>
           <MenuItem onClick={handleDeleteClick}>Удалить</MenuItem>
+          {!lesson.is_cancelled && (
+            <MenuItem onClick={handleCancelLesson}>Отменить занятие</MenuItem>
+          )}
         </Menu>
       </Paper>
     );
@@ -420,58 +487,146 @@ const Calendar: React.FC = () => {
     </TableCell>
   ));
 
-  // Оптимизация рендеринга месячного представления
-  const renderMonthView = useCallback(() => {
+  const handleLessonClick = useCallback((event: React.MouseEvent<HTMLElement>, lesson: Lesson) => {
+    event.stopPropagation();
+    setSelectedLesson(lesson);
+    setAnchorEl(event.currentTarget);
+  }, []);
+
+  const handleEditLesson = useCallback(() => {
+    if (selectedLesson) {
+      setEditingLesson(selectedLesson);
+      setOpenDialog(true);
+      handleLessonMenuClose();
+    }
+  }, [selectedLesson, handleLessonMenuClose]);
+
+  const renderDayView = useCallback(() => {
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const dayStart = startOfDay(selectedDate);
+    
     return (
-      <Table>
-        <TableHeader viewType="month" weekDays={[]} />
+      <Table className="calendar-table calendar-day-view">
+        <TableHead>
+          <TableRow>
+            <TableCell className="calendar-time-cell"></TableCell>
+            <TableCell className="calendar-day-header">
+              {format(selectedDate, 'EEEE, d MMMM yyyy', { locale: ru })}
+            </TableCell>
+          </TableRow>
+        </TableHead>
         <TableBody>
-          {weeks.map((week: Date[], weekIndex: number) => (
-            <TableRow key={weekIndex}>
-              {week.map((date: Date) => (
-                <DayCell
-                  key={date.toISOString()}
-                  date={date}
-                  lessons={getLessonsForDate(date)}
-                  onClick={handleDateClick}
-                />
-              ))}
-            </TableRow>
-          ))}
+          {hours.map((hour) => {
+            const hourStart = setHours(dayStart, hour);
+            const hourEnd = setHours(dayStart, hour + 1);
+            const hourLessons = lessons.filter(lesson => {
+              const lessonDate = new Date(lesson.date);
+              const lessonEnd = addMinutes(lessonDate, lesson.duration);
+              return (
+                (lessonDate >= hourStart && lessonDate < hourEnd) ||
+                (lessonEnd > hourStart && lessonEnd <= hourEnd) ||
+                (lessonDate <= hourStart && lessonEnd >= hourEnd)
+              );
+            });
+
+            return (
+              <TableRow key={hour}>
+                <TableCell className="calendar-time-cell">
+                  {format(hourStart, 'HH:mm')}
+                </TableCell>
+                <TableCell className="calendar-day-cell">
+                  {hourLessons.map((lesson) => {
+                    const lessonDate = new Date(lesson.date);
+                    const lessonEnd = addMinutes(lessonDate, lesson.duration);
+                    const top = (lessonDate.getMinutes() / 60) * 100;
+                    const height = ((lessonEnd.getTime() - lessonDate.getTime()) / (60 * 60 * 1000)) * 100;
+
+                    return (
+                      <div
+                        key={lesson.id}
+                        className={`calendar-event ${lesson.is_cancelled ? 'cancelled' : ''}`}
+                        style={{
+                          top: `${top}%`,
+                          height: `${height}%`
+                        }}
+                        onClick={(e) => handleLessonClick(e, lesson)}
+                      >
+                        {lesson.student.first_name} {lesson.student.last_name}
+                        {lesson.is_cancelled && <span> (Отменено)</span>}
+                      </div>
+                    );
+                  })}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     );
-  }, [weeks, getLessonsForDate, handleDateClick]);
+  }, [selectedDate, lessons, handleLessonClick]);
 
-  // Оптимизация рендеринга недельного представления
   const renderWeekView = useCallback(() => {
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+    const weekDays = eachDayOfInterval({
+      start: weekStart,
+      end: addDays(weekStart, 6)
+    });
+
     return (
-      <Table>
-        <TableHeader viewType="week" weekDays={weekDays} />
+      <Table className="calendar-table calendar-week-view">
+        <TableHead>
+          <TableRow>
+            <TableCell className="calendar-time-cell"></TableCell>
+            {weekDays.map((day) => (
+              <TableCell key={day.toISOString()} className="calendar-day-header">
+                {format(day, 'EEEE, d MMMM', { locale: ru })}
+              </TableCell>
+            ))}
+          </TableRow>
+        </TableHead>
         <TableBody>
-          {HOURS.map((hour) => (
+          {hours.map((hour) => (
             <TableRow key={hour}>
-              <TimeCell hour={hour} />
-              {weekDays.map((date) => {
-                const hourLessons = getLessonsForHour(date, hour);
+              <TableCell className="calendar-time-cell">
+                {format(setHours(new Date(), hour), 'HH:mm')}
+              </TableCell>
+              {weekDays.map((day) => {
+                const dayStart = setHours(day, hour);
+                const dayEnd = setHours(day, hour + 1);
+                const hourLessons = lessons.filter(lesson => {
+                  const lessonDate = new Date(lesson.date);
+                  const lessonEnd = addMinutes(lessonDate, lesson.duration);
+                  return (
+                    (lessonDate >= dayStart && lessonDate < dayEnd) ||
+                    (lessonEnd > dayStart && lessonEnd <= dayEnd) ||
+                    (lessonDate <= dayStart && lessonEnd >= dayEnd)
+                  );
+                });
+
                 return (
-                  <TableCell key={`${date.toISOString()}-${hour}`}>
-                    {hourLessons.map((lesson) => (
-                      <LessonItem
-                        key={lesson.id}
-                        lesson={lesson}
-                        onEdit={(lesson) => {
-                          setEditingLesson(lesson);
-                          setNewLesson({
-                            student_id: lesson.student_id.toString(),
-                            date: lesson.date,
-                            duration: lesson.duration,
-                          });
-                          setOpenDialog(true);
-                        }}
-                        onDelete={handleDeleteLesson}
-                      />
-                    ))}
+                  <TableCell key={day.toISOString()} className="calendar-day-cell">
+                    {hourLessons.map((lesson) => {
+                      const lessonDate = new Date(lesson.date);
+                      const lessonEnd = addMinutes(lessonDate, lesson.duration);
+                      const top = (lessonDate.getMinutes() / 60) * 100;
+                      const height = ((lessonEnd.getTime() - lessonDate.getTime()) / (60 * 60 * 1000)) * 100;
+
+                      return (
+                        <div
+                          key={lesson.id}
+                          className={`calendar-event ${lesson.is_cancelled ? 'cancelled' : ''}`}
+                          style={{
+                            top: `${top}%`,
+                            height: `${height}%`
+                          }}
+                          onClick={(e) => handleLessonClick(e, lesson)}
+                        >
+                          {lesson.student.first_name} {lesson.student.last_name}
+                          {lesson.is_cancelled && <span> (Отменено)</span>}
+                        </div>
+                      );
+                    })}
                   </TableCell>
                 );
               })}
@@ -480,44 +635,58 @@ const Calendar: React.FC = () => {
         </TableBody>
       </Table>
     );
-  }, [weekDays, getLessonsForHour, handleDeleteLesson]);
+  }, [selectedDate, lessons, handleLessonClick]);
 
-  // Оптимизация рендеринга дневного представления
-  const renderDayView = useCallback(() => {
+  const renderMonthView = useCallback(() => {
+    const monthStart = startOfMonth(selectedDate);
+    const monthEnd = endOfMonth(selectedDate);
+    const startDate = startOfWeek(monthStart, { weekStartsOn: 1 });
+    const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
+    const days = eachDayOfInterval({ start: startDate, end: endDate });
+    const weeks = chunk(days, 7);
+
     return (
-      <Table>
-        <TableHeader viewType="day" weekDays={[selectedDate]} />
-        <TableBody>
-          {HOURS.map((hour) => {
-            const hourLessons = getLessonsForHour(selectedDate, hour);
-            return (
-              <TableRow key={hour}>
-                <TimeCell hour={hour} />
-                <TableCell>
-                  {hourLessons.map((lesson) => (
-                    <LessonItem
+      <div className="calendar-month-view">
+        <div className="calendar-day-header">Пн</div>
+        <div className="calendar-day-header">Вт</div>
+        <div className="calendar-day-header">Ср</div>
+        <div className="calendar-day-header">Чт</div>
+        <div className="calendar-day-header">Пт</div>
+        <div className="calendar-day-header">Сб</div>
+        <div className="calendar-day-header">Вс</div>
+
+        {weeks.map((week, weekIndex) => (
+          <React.Fragment key={weekIndex}>
+            {week.map((date) => {
+              const dayLessons = lessons.filter(lesson => isSameDay(new Date(lesson.date), date));
+              const isToday = isSameDay(date, new Date());
+              const isCurrentMonth = isSameMonth(date, selectedDate);
+
+              return (
+                <div
+                  key={date.toISOString()}
+                  className={`calendar-day-cell ${!isCurrentMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`}
+                >
+                  <div className="calendar-day-number">
+                    {format(date, 'd')}
+                  </div>
+                  {dayLessons.map((lesson) => (
+                    <div
                       key={lesson.id}
-                      lesson={lesson}
-                      onEdit={(lesson) => {
-                        setEditingLesson(lesson);
-                        setNewLesson({
-                          student_id: lesson.student_id.toString(),
-                          date: lesson.date,
-                          duration: lesson.duration,
-                        });
-                        setOpenDialog(true);
-                      }}
-                      onDelete={handleDeleteLesson}
-                    />
+                      className={`calendar-event ${lesson.is_cancelled ? 'cancelled' : ''}`}
+                      onClick={(e) => handleLessonClick(e, lesson)}
+                    >
+                      {format(new Date(lesson.date), 'HH:mm')} - {lesson.student.first_name} {lesson.student.last_name}
+                    </div>
                   ))}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                </div>
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </div>
     );
-  }, [selectedDate, getLessonsForHour, handleDeleteLesson]);
+  }, [selectedDate, lessons, handleLessonClick]);
 
   // Оптимизация рендеринга представления
   const renderView = useCallback(() => {
@@ -556,188 +725,161 @@ const Calendar: React.FC = () => {
     };
   }, [fetchStudents, fetchLessons]);
 
-  const handleEditLesson = async () => {
-    if (!editingLesson) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        console.error('No authentication token found');
-        return;
+  const handlePrevDay = useCallback(() => {
+    setSelectedDate(prev => {
+      switch (viewType) {
+        case 'day':
+          return addDays(prev, -1);
+        case 'week':
+          return addDays(prev, -7);
+        case 'month':
+          return subMonths(prev, 1);
+        default:
+          return prev;
       }
+    });
+  }, [viewType]);
 
-      const endTime = addMinutes(editingLesson.date, editingLesson.duration);
-      
-      const lessonData = {
-        student_id: editingLesson.student_id,
-        date: format(editingLesson.date, "yyyy-MM-dd HH:mm:ss"),
-        duration: editingLesson.duration,
-      };
+  const handleNextDay = useCallback(() => {
+    setSelectedDate(prev => {
+      switch (viewType) {
+        case 'day':
+          return addDays(prev, 1);
+        case 'week':
+          return addDays(prev, 7);
+        case 'month':
+          return addMonths(prev, 1);
+        default:
+          return prev;
+      }
+    });
+  }, [viewType]);
 
-      await api.put(`/lessons/${editingLesson.id}`, lessonData, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      setOpenDialog(false);
-      setEditingLesson(null);
-      fetchLessons();
-    } catch (error) {
-      console.error('Error updating lesson:', error);
-    }
-  };
-
-  const handleLessonMenuClick = useCallback((event: React.MouseEvent<HTMLElement>, lesson: Lesson) => {
-    event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-    setSelectedLesson(lesson);
+  const handleToday = useCallback(() => {
+    setSelectedDate(new Date());
   }, []);
-
-  const handleLessonMenuClose = useCallback(() => {
-    setAnchorEl(null);
-    setSelectedLesson(null);
-  }, []);
-
-  const handleMarkAsCompleted = async () => {
-    if (!selectedLesson) return;
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await api.put(`/lessons/${selectedLesson.id}/complete`, {}, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.status === 200) {
-        setLessons(lessons.map(lesson => 
-          lesson.id === selectedLesson.id 
-            ? { ...lesson, is_completed: true }
-            : lesson
-        ));
-        setSelectedLesson(null);
-        setAnchorEl(null);
-      }
-    } catch (error) {
-      console.error('Error marking lesson as completed:', error);
-      alert('Ошибка при отметке занятия как выполненного');
-    }
-  };
-
-  const handleEditClick = useCallback(() => {
-    if (selectedLesson) {
-      setEditingLesson(selectedLesson);
-      setNewLesson({
-        student_id: selectedLesson.student_id.toString(),
-        date: selectedLesson.date,
-        duration: selectedLesson.duration,
-      });
-      setOpenDialog(true);
-    }
-  }, [selectedLesson]);
-
-  const handleDeleteClick = useCallback(() => {
-    if (selectedLesson) {
-      handleDeleteLesson(selectedLesson.id);
-    }
-    handleLessonMenuClose();
-  }, [selectedLesson, handleLessonMenuClose]);
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ru}>
-      <Box sx={{ p: 3 }}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h4" gutterBottom>
-            Календарь занятий
+    <Container className="calendar-container">
+      <Box className="calendar-header">
+        <Box className="calendar-controls">
+          <IconButton onClick={handlePrevDay}>
+            <ChevronLeftIcon />
+          </IconButton>
+          <Button onClick={handleToday}>Сегодня</Button>
+          <IconButton onClick={handleNextDay}>
+            <ChevronRightIcon />
+          </IconButton>
+          <Typography variant="h6" className="calendar-title">
+            {(() => {
+              switch (viewType) {
+                case 'day':
+                  return format(selectedDate, 'EEEE, d MMMM yyyy', { locale: ru });
+                case 'week':
+                  return `${format(startOfWeek(selectedDate, { weekStartsOn: 1 }), 'd MMMM', { locale: ru })} - ${format(endOfWeek(selectedDate, { weekStartsOn: 1 }), 'd MMMM yyyy', { locale: ru })}`;
+                case 'month':
+                  return format(selectedDate, 'MMMM yyyy', { locale: ru });
+                default:
+                  return '';
+              }
+            })()}
           </Typography>
+        </Box>
+        <ToggleButtonGroup
+          value={viewType}
+          exclusive
+          onChange={(_, newView) => newView && setViewType(newView)}
+        >
+          <ToggleButton value="day">День</ToggleButton>
+          <ToggleButton value="week">Неделя</ToggleButton>
+          <ToggleButton value="month">Месяц</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+      {renderView()}
 
-          <Box sx={{ mb: 3 }}>
-            <Button
-              variant="contained"
-              onClick={() => setOpenDialog(true)}
-              disabled={!isAuthenticated}
-            >
-              Добавить занятие
-            </Button>
-          </Box>
-
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-            <Box>
-              <ToggleButtonGroup
-                value={viewType}
-                exclusive
-                onChange={(e, newView) => newView && setViewType(newView)}
-                sx={{ mr: 2 }}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <DialogTitle>
+          {editingLesson ? 'Редактировать занятие' : 'Добавить новое занятие'}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Ученик</InputLabel>
+              <Select
+                value={newLesson.student_id}
+                onChange={(e) => setNewLesson({ ...newLesson, student_id: e.target.value })}
+                label="Ученик"
               >
-                <ToggleButton value="day">День</ToggleButton>
-                <ToggleButton value="week">Неделя</ToggleButton>
-                <ToggleButton value="month">Месяц</ToggleButton>
-              </ToggleButtonGroup>
-            </Box>
-          </Box>
-
-          <DatePicker
-            label="Выберите дату"
-            value={selectedDate}
-            onChange={(newValue) => newValue && setSelectedDate(newValue)}
-            sx={{ mb: 3 }}
-          />
-
-          {renderView()}
-
-          <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-            <DialogTitle>Добавить занятие</DialogTitle>
-            <DialogContent>
-              <FormControl fullWidth margin="dense">
-                <InputLabel>Ученик</InputLabel>
-                <Select
-                  value={selectedStudent?.id?.toString() || ''}
-                  onChange={(e) => setSelectedStudent(students.find(s => s.id === parseInt(e.target.value)) || null)}
-                  label="Ученик"
-                >
-                  {students.map((student) => (
-                    <MenuItem key={student.id} value={student.id}>
-                      {student.first_name} {student.last_name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+                {students.map((student) => (
+                  <MenuItem key={student.id} value={student.id}>
+                    {student.first_name} {student.last_name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={ru}>
               <DatePicker
                 label="Дата"
-                value={selectedDate}
-                onChange={(date) => setSelectedDate(date || new Date())}
-                slotProps={{ textField: { fullWidth: true, margin: "dense" } }}
+                value={newLesson.date}
+                onChange={(date) => date && setNewLesson({ ...newLesson, date })}
+                sx={{ mb: 2, width: '100%' }}
               />
               <TimePicker
                 label="Время"
-                value={selectedTime}
-                onChange={(date) => setSelectedTime(date || new Date())}
-                slotProps={{ textField: { fullWidth: true, margin: "dense" } }}
+                value={newLesson.date}
+                onChange={(date) => date && setNewLesson({ ...newLesson, date })}
+                sx={{ mb: 2, width: '100%' }}
               />
-              <TextField
-                margin="dense"
-                label="Длительность (минут)"
-                type="number"
-                fullWidth
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-              />
-            </DialogContent>
-            <DialogActions>
-              <Button onClick={() => setOpenDialog(false)}>Отмена</Button>
-              <Button onClick={handleAddLesson} variant="contained">
-                Добавить
-              </Button>
-            </DialogActions>
-          </Dialog>
-        </Paper>
-      </Box>
-    </LocalizationProvider>
+            </LocalizationProvider>
+            <TextField
+              label="Длительность (минуты)"
+              type="number"
+              value={newLesson.duration}
+              onChange={(e) => setNewLesson({ ...newLesson, duration: parseInt(e.target.value) })}
+              fullWidth
+              sx={{ mb: 2 }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Отмена</Button>
+          <Button onClick={editingLesson ? handleEditLesson : handleAddLesson} variant="contained">
+            {editingLesson ? 'Сохранить' : 'Добавить'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleLessonMenuClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+        <MenuItem onClick={handleEditLesson}>
+          <EditIcon sx={{ mr: 1 }} /> Редактировать
+        </MenuItem>
+        <MenuItem onClick={handleDeleteLesson}>
+          <DeleteIcon sx={{ mr: 1 }} /> Удалить
+        </MenuItem>
+        {selectedLesson && !selectedLesson.is_completed && (
+          <MenuItem onClick={handleMarkAsCompleted}>
+            <CheckIcon sx={{ mr: 1 }} /> Отметить как выполненное
+          </MenuItem>
+        )}
+        {selectedLesson && !selectedLesson.is_cancelled && (
+          <MenuItem onClick={handleCancelLesson}>
+            <CancelIcon sx={{ mr: 1 }} /> Отменить занятие
+          </MenuItem>
+        )}
+      </Menu>
+    </Container>
   );
 };
 

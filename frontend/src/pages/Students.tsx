@@ -30,6 +30,8 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { SelectChangeEvent } from '@mui/material/Select';
 import api from '@/services/api';
+import '../styles/Students.css';
+import { CompanyConfig } from '../config/CompanyConfig';
 
 interface Student {
   id: number;
@@ -216,9 +218,9 @@ const Students: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Студенты</Typography>
+        <Typography variant="h4">{CompanyConfig.pages.students}</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpen}>
-          Добавить студента
+          {CompanyConfig.components.studentForm.addTitle}
         </Button>
       </Box>
 
@@ -227,19 +229,19 @@ const Students: React.FC = () => {
           <TableHead>
             <TableRow>
               <TableCell onClick={() => handleSort('first_name')} style={{ cursor: 'pointer' }}>
-                Имя {sortConfig.key === 'first_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                {CompanyConfig.components.studentForm.firstName} {sortConfig.key === 'first_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableCell>
               <TableCell onClick={() => handleSort('last_name')} style={{ cursor: 'pointer' }}>
-                Фамилия {sortConfig.key === 'last_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                {CompanyConfig.components.studentForm.lastName} {sortConfig.key === 'last_name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableCell>
-              <TableCell>Телефон</TableCell>
+              <TableCell>{CompanyConfig.components.studentForm.phone}</TableCell>
               <TableCell onClick={() => handleSort('total_lessons')} style={{ cursor: 'pointer' }}>
-                Всего уроков {sortConfig.key === 'total_lessons' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                {CompanyConfig.components.studentForm.lessonsCount} {sortConfig.key === 'total_lessons' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableCell>
               <TableCell onClick={() => handleSort('remaining_lessons')} style={{ cursor: 'pointer' }}>
                 Осталось уроков {sortConfig.key === 'remaining_lessons' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
               </TableCell>
-              <TableCell>Активный абонемент</TableCell>
+              <TableCell>{CompanyConfig.components.studentForm.subscription}</TableCell>
               <TableCell>Действия</TableCell>
             </TableRow>
           </TableHead>
@@ -297,12 +299,12 @@ const Students: React.FC = () => {
 
       {/* Диалог добавления ученика */}
       <Dialog open={open} onClose={handleClose}>
-        <DialogTitle>Добавить студента</DialogTitle>
+        <DialogTitle>{CompanyConfig.components.studentForm.addTitle}</DialogTitle>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
-            label="Имя"
+            label={CompanyConfig.components.studentForm.firstName}
             fullWidth
             name="firstName"
             value={formData.firstName}
@@ -311,7 +313,7 @@ const Students: React.FC = () => {
           />
           <TextField
             margin="dense"
-            label="Фамилия"
+            label={CompanyConfig.components.studentForm.lastName}
             fullWidth
             name="lastName"
             value={formData.lastName}
@@ -320,7 +322,7 @@ const Students: React.FC = () => {
           />
           <TextField
             margin="dense"
-            label="Телефон"
+            label={CompanyConfig.components.studentForm.phone}
             fullWidth
             name="phone"
             value={formData.phone}
@@ -328,12 +330,12 @@ const Students: React.FC = () => {
             required
           />
           <FormControl fullWidth margin="dense">
-            <InputLabel>Абонемент</InputLabel>
+            <InputLabel>{CompanyConfig.components.studentForm.subscription}</InputLabel>
             <Select
               name="subscriptionId"
               value={formData.subscriptionId}
               onChange={handleSubscriptionChange}
-              label="Абонемент"
+              label={CompanyConfig.components.studentForm.subscription}
             >
               <MenuItem value="">Нет абонемента</MenuItem>
               {subscriptions.map((sub) => (
@@ -352,42 +354,42 @@ const Students: React.FC = () => {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Отмена</Button>
+          <Button onClick={handleClose}>{CompanyConfig.components.studentForm.cancel}</Button>
           <Button onClick={handleSubmit} variant="contained">
-            Добавить
+            {CompanyConfig.components.studentForm.add}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Карточка ученика */}
       <Dialog open={openStudentCard} onClose={handleCloseStudentCard}>
-        <DialogTitle>Редактировать студента</DialogTitle>
+        <DialogTitle>{CompanyConfig.components.studentForm.editTitle}</DialogTitle>
         <DialogContent>
           {selectedStudent && (
             <>
               <TextField
                 margin="dense"
-                label="Имя"
+                label={CompanyConfig.components.studentForm.firstName}
                 fullWidth
                 value={selectedStudent.first_name}
                 onChange={(e) => setSelectedStudent({ ...selectedStudent, first_name: e.target.value })}
               />
               <TextField
                 margin="dense"
-                label="Фамилия"
+                label={CompanyConfig.components.studentForm.lastName}
                 fullWidth
                 value={selectedStudent.last_name}
                 onChange={(e) => setSelectedStudent({ ...selectedStudent, last_name: e.target.value })}
               />
               <TextField
                 margin="dense"
-                label="Телефон"
+                label={CompanyConfig.components.studentForm.phone}
                 fullWidth
                 value={selectedStudent.phone}
                 onChange={(e) => setSelectedStudent({ ...selectedStudent, phone: e.target.value })}
               />
               <FormControl fullWidth margin="dense">
-                <InputLabel>Абонемент</InputLabel>
+                <InputLabel>{CompanyConfig.components.studentForm.subscription}</InputLabel>
                 <Select
                   value={selectedStudent.subscription_id?.toString() || ''}
                   onChange={(e) => {
@@ -409,7 +411,7 @@ const Students: React.FC = () => {
                       });
                     }
                   }}
-                  label="Абонемент"
+                  label={CompanyConfig.components.studentForm.subscription}
                 >
                   <MenuItem value="">Нет абонемента</MenuItem>
                   {subscriptions.map((sub) => (

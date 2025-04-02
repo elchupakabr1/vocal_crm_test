@@ -54,6 +54,12 @@ class Lesson(LessonBase):
     class Config:
         from_attributes = True
 
+class LessonUpdate(BaseModel):
+    date: Optional[datetime] = None
+    duration: Optional[int] = None
+    is_completed: Optional[bool] = None
+    notes: Optional[str] = None
+
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str

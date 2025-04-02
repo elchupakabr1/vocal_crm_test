@@ -21,6 +21,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import api from '@/services/api';
+import '../styles/Subscriptions.css';
+import { CompanyConfig } from '../config/CompanyConfig';
 
 interface Subscription {
   id: number;
@@ -109,7 +111,7 @@ const Subscriptions: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-        <Typography variant="h4">Абонементы</Typography>
+        <Typography variant="h4">{CompanyConfig.pages.subscriptions}</Typography>
         <Button variant="contained" onClick={handleOpen} startIcon={<AddIcon />}>
           Добавить абонемент
         </Button>
@@ -121,7 +123,7 @@ const Subscriptions: React.FC = () => {
             <TableRow>
               <TableCell>Название</TableCell>
               <TableCell>Стоимость</TableCell>
-              <TableCell>Количество занятий</TableCell>
+              <TableCell>{CompanyConfig.components.studentForm.lessonsCount}</TableCell>
               <TableCell>Действия</TableCell>
             </TableRow>
           </TableHead>

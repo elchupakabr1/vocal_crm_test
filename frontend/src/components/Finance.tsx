@@ -29,7 +29,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { ru } from 'date-fns/locale';
+import ru from 'date-fns/locale/ru';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -38,6 +38,8 @@ import api from '@/services/api';
 import { Expense, Income, FinanceSummary } from '@/types/finance';
 import RentSettings from './RentSettings';
 import { useDebounce } from '@/hooks/useDebounce';
+import '../styles/Finance.css';
+import { CompanyConfig } from '../config/CompanyConfig';
 
 interface Subscription {
   id: number;
@@ -393,7 +395,7 @@ const Finance: React.FC = () => {
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
-                        Общий доход
+                        {CompanyConfig.components.finance.totalIncome}
                       </Typography>
                       <Typography variant="h5">
                         {summary.totalIncome.toFixed(2)} ₽
@@ -405,7 +407,7 @@ const Finance: React.FC = () => {
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
-                        Общие расходы
+                        {CompanyConfig.components.finance.totalExpenses}
                       </Typography>
                       <Typography variant="h5">
                         {summary.totalExpenses.toFixed(2)} ₽
@@ -417,7 +419,7 @@ const Finance: React.FC = () => {
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
-                        Чистая прибыль
+                        {CompanyConfig.components.finance.profit}
                       </Typography>
                       <Typography variant="h5" color={summary.profit >= 0 ? 'success.main' : 'error.main'}>
                         {summary.profit.toFixed(2)} ₽
@@ -429,7 +431,7 @@ const Finance: React.FC = () => {
                   <Card>
                     <CardContent>
                       <Typography color="textSecondary" gutterBottom>
-                        Доход от абонементов
+                        {CompanyConfig.components.finance.subscriptionIncome}
                       </Typography>
                       <Typography variant="h5">
                         {summary.subscriptionIncome.toFixed(2)} ₽
@@ -445,9 +447,9 @@ const Finance: React.FC = () => {
           <Grid item xs={12} md={6}>
             <Paper sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Расходы</Typography>
+                <Typography variant="h6">{CompanyConfig.components.finance.expenses}</Typography>
                 <Button variant="contained" onClick={() => setShowAddExpense(true)}>
-                  Добавить расход
+                  {CompanyConfig.components.finance.addExpense}
                 </Button>
               </Box>
               <TableContainer>
@@ -494,9 +496,9 @@ const Finance: React.FC = () => {
           <Grid item xs={12} md={6}>
             <Paper sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h6">Доходы</Typography>
+                <Typography variant="h6">{CompanyConfig.components.finance.incomes}</Typography>
                 <Button variant="contained" onClick={() => setShowAddIncome(true)}>
-                  Добавить доход
+                  {CompanyConfig.components.finance.addIncome}
                 </Button>
               </Box>
               <TableContainer>

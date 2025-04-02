@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, MenuItem } from '@mui/material';
 import { Student } from '../types/Student';
 import { Subscription } from '../types/Subscription';
+import '../styles/StudentForm.css';
+import { CompanyConfig } from '../config/CompanyConfig';
 
 interface StudentFormProps {
   open: boolean;
@@ -29,7 +31,6 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 
   useEffect(() => {
     if (initialData) {
-      console.log('Получены начальные данные:', initialData);
       setFirstName(initialData.first_name);
       setLastName(initialData.last_name);
       setPhone(initialData.phone);
@@ -50,13 +51,10 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 
   const handleSubscriptionChange = (event: React.ChangeEvent<{ value: unknown }>) => {
     const subscriptionId = event.target.value ? Number(event.target.value) : null;
-    console.log('Изменение абонемента:', subscriptionId);
     setSelectedSubscriptionId(subscriptionId);
     
-    // Обновляем количество уроков при изменении абонемента
     const selectedSubscription = subscriptions.find(s => s.id === subscriptionId);
     if (selectedSubscription) {
-      console.log('Выбранный абонемент:', selectedSubscription);
       setTotalLessons(selectedSubscription.lessons_count);
       setRemainingLessons(selectedSubscription.lessons_count);
     } else {
@@ -66,9 +64,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
   };
 
   const formatPhoneNumber = (value: string): string => {
-    // Удаляем все нецифровые символы
     const cleaned = value.replace(/\D/g, '');
-    // Добавляем + если его нет и номер начинается с 7 или 8
     if (cleaned.length >= 10 && (cleaned.startsWith('7') || cleaned.startsWith('8'))) {
       return '+' + cleaned;
     }
@@ -90,13 +86,8 @@ export const StudentForm: React.FC<StudentFormProps> = ({
     
     try {
       const selectedSubscription = subscriptions.find(s => s.id === selectedSubscriptionId);
-      console.log('Выбранная подписка:', selectedSubscriptionId);
-      console.log('Количество уроков:', selectedSubscription?.lessons_count);
-      
-      // Форматируем номер телефона
       const formattedPhone = formatPhoneNumber(phone);
       
-      // Проверяем, что все обязательные поля заполнены
       if (!firstName || !lastName || !formattedPhone) {
         setError('Пожалуйста, заполните все обязательные поля');
         return;
@@ -112,8 +103,6 @@ export const StudentForm: React.FC<StudentFormProps> = ({
         remaining_lessons: selectedSubscription?.lessons_count || 0
       };
       
-      console.log('Отправляемые данные из формы:', JSON.stringify(studentData, null, 2));
-      
       await onSubmit(studentData);
     } catch (error) {
       console.error('Ошибка при отправке формы:', error);
@@ -123,13 +112,13 @@ export const StudentForm: React.FC<StudentFormProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogTitle>{initialData ? 'Редактировать студента' : 'Добавить студента'}</DialogTitle>
+      <DialogTitle>{initialData ? CompanyConfig.components.studentForm.editTitle : CompanyConfig.components.studentForm.addTitle}</DialogTitle>
       <form onSubmit={handleSubmit}>
         <DialogContent>
           <TextField
             autoFocus
             margin="dense"
-            label="Имя"
+            label={CompanyConfig.components.studentForm.firstName}
             type="text"
             fullWidth
             value={firstName}
@@ -138,7 +127,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           />
           <TextField
             margin="dense"
-            label="Фамилия"
+            label={CompanyConfig.components.studentForm.lastName}
             type="text"
             fullWidth
             value={lastName}
@@ -147,7 +136,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           />
           <TextField
             margin="dense"
-            label="Телефон"
+            label={CompanyConfig.components.studentForm.phone}
             type="tel"
             fullWidth
             value={phone}
@@ -157,7 +146,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           />
           <TextField
             margin="dense"
-            label="Email"
+            label={CompanyConfig.components.studentForm.email}
             type="email"
             fullWidth
             value={email}
@@ -166,7 +155,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           <TextField
             select
             margin="dense"
-            label="Абонемент"
+            label={CompanyConfig.components.studentForm.subscription}
             fullWidth
             value={selectedSubscriptionId || ''}
             onChange={handleSubscriptionChange}
@@ -183,7 +172,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           {selectedSubscriptionId && (
             <TextField
               margin="dense"
-              label="Количество уроков"
+              label={CompanyConfig.components.studentForm.lessonsCount}
               type="number"
               fullWidth
               value={totalLessons}
@@ -192,9 +181,9 @@ export const StudentForm: React.FC<StudentFormProps> = ({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={onClose}>Отмена</Button>
+          <Button onClick={onClose}>{CompanyConfig.components.studentForm.cancel}</Button>
           <Button type="submit" variant="contained" color="primary">
-            {initialData ? 'Сохранить' : 'Добавить'}
+            {initialData ? CompanyConfig.components.studentForm.save : CompanyConfig.components.studentForm.add}
           </Button>
         </DialogActions>
       </form>

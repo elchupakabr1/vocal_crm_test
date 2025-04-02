@@ -1,0 +1,50 @@
+.rent-settings-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  background-color: var(--background-white);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+.rent-settings-title {
+  color: var(--text-primary);
+  margin-bottom: 2rem;
+}
+
+.rent-settings-form {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.rent-settings-form-group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.rent-settings-label {
+  color: var(--text-secondary);
+}
+
+.rent-settings-input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.rent-settings-button {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
+  color: var(--text-white);
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.rent-settings-button:hover {
+  background-color: var(--primary-hover);
+} 

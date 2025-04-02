@@ -1,0 +1,262 @@
+@import './variables.css';
+
+/* Общие стили */
+.calendar-container {
+  background-color: var(--background-white);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  margin: 20px auto;
+  max-width: 1200px;
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: var(--background-light);
+  border-radius: 8px;
+}
+
+.calendar-title {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.calendar-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.calendar-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Стили для режима "День" */
+.calendar-day-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.calendar-day-view .calendar-time-cell {
+  width: 60px;
+  padding: 0;
+  text-align: right;
+  vertical-align: top;
+  border-right: 1px solid var(--border-color);
+  position: relative;
+  height: 60px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.calendar-day-view .calendar-time-cell::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  height: 1px;
+  width: 100%;
+  background-color: var(--border-color);
+}
+
+.calendar-day-view .calendar-day-cell {
+  position: relative;
+  height: 60px;
+  padding: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.calendar-day-view .calendar-event {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--background-calendar-event);
+  color: var(--text-calendar-white);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+  border-left: 4px solid var(--primary-color);
+}
+
+/* Стили для режима "Неделя" */
+.calendar-week-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.calendar-week-view .calendar-time-cell {
+  width: 60px;
+  padding: 0;
+  text-align: right;
+  vertical-align: top;
+  border-right: 1px solid var(--border-color);
+  position: relative;
+  height: 60px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.calendar-week-view .calendar-day-header {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--background-light);
+  height: 40px;
+  font-weight: 500;
+}
+
+.calendar-week-view .calendar-day-cell {
+  position: relative;
+  height: 60px;
+  padding: 0;
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+}
+
+.calendar-week-view .calendar-event {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--background-calendar-event);
+  color: var(--text-calendar-color);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  z-index: 1;
+  border-left: 4px solid var(--primary-color);
+}
+
+/* Стили для режима "Месяц" */
+.calendar-month-view {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-template-rows: 40px repeat(6, 1fr);
+  height: 100%;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.calendar-month-view .calendar-day-header {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--background-light);
+  font-weight: 500;
+}
+
+.calendar-month-view .calendar-day-cell {
+  padding: 4px;
+  border: 1px solid var(--border-color);
+  min-height: 100px;
+  position: relative;
+  background-color: var(--background-white);
+}
+
+.calendar-month-view .calendar-day-cell.other-month {
+  background-color: var(--background-light);
+  color: var(--text-muted);
+}
+
+.calendar-month-view .calendar-day-cell.today {
+  background-color: var(--background-today);
+}
+
+.calendar-month-view .calendar-day-number {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  padding: 4px;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calendar-month-view .calendar-day-cell.today .calendar-day-number {
+  background-color: var(--primary-color);
+  color: var(--text-white);
+}
+
+.calendar-month-view .calendar-event {
+  margin: 2px 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: var(--background-calendar-event);
+  color: var(--text-calendar-color);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  border-left: 4px solid var(--primary-color);
+}
+
+/* Общие стили для событий */
+.calendar-event:hover {
+  background-color: var(--background-event-hover);
+}
+
+.calendar-event.cancelled {
+  background-color: var(--background-cancelled);
+  text-decoration: line-through;
+  border-left-color: var(--text-cancelled);
+}
+
+.calendar-event.cancelled:hover {
+  background-color: var(--background-cancelled-hover);
+}
+
+/* Медиа-запросы для адаптивности */
+@media (max-width: 768px) {
+  .calendar-container {
+    padding: 10px;
+    margin: 10px;
+    height: calc(100vh - 80px);
+  }
+
+  .calendar-time-cell {
+    width: 40px;
+    font-size: 12px;
+  }
+
+  .calendar-day-cell {
+    height: 40px;
+  }
+
+  .calendar-event {
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+
+  .calendar-title {
+    font-size: 20px;
+  }
+} 

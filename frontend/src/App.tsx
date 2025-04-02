@@ -10,6 +10,8 @@ import Subscriptions from '@/pages/Subscriptions';
 import Layout from '@/components/Layout';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import Finance from '@/components/Finance';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const theme = createTheme({
   palette: {
@@ -23,9 +25,12 @@ const theme = createTheme({
   },
 });
 
-const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
 };
 
 function App() {
@@ -39,9 +44,9 @@ function App() {
             <Route
               path="/"
               element={
-                <PrivateRoute>
+                <ProtectedRoute>
                   <Layout />
-                </PrivateRoute>
+                </ProtectedRoute>
               }
             >
               <Route index element={<Calendar />} />
@@ -51,6 +56,7 @@ function App() {
               <Route path="finance" element={<Finance />} />
             </Route>
           </Routes>
+          <ToastContainer position="bottom-right" />
         </Router>
       </AuthProvider>
     </ThemeProvider>
